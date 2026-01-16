@@ -706,17 +706,17 @@ function Build-MainForm {
 
     $orgLabel = New-Object System.Windows.Forms.Label
     $orgLabel.Text = "Organization:"
-    $orgLabel.Location = New-Object System.Drawing.Point(15, 28)
+    $orgLabel.Location = New-Object System.Drawing.Point(15, 30)
     $orgLabel.AutoSize = $true
 
     $script:OrganizationTextBox = New-Object System.Windows.Forms.TextBox
-    $script:OrganizationTextBox.Location = New-Object System.Drawing.Point(100, 25)
+    $script:OrganizationTextBox.Location = New-Object System.Drawing.Point(100, 27)
     $script:OrganizationTextBox.Size = New-Object System.Drawing.Size(350, 23)
     try { $script:OrganizationTextBox.PlaceholderText = "contoso.onmicrosoft.com" } catch {}
 
     $script:ConnectButton = New-Object System.Windows.Forms.Button
     $script:ConnectButton.Text = "Connect"
-    $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 23)
+    $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 25)
     $script:ConnectButton.Size = New-Object System.Drawing.Size(100, 28)
     $script:ConnectButton.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
     $script:ConnectButton.ForeColor = [System.Drawing.Color]::White
@@ -750,11 +750,11 @@ function Build-MainForm {
 
     $jobTitleLabel = New-Object System.Windows.Forms.Label
     $jobTitleLabel.Text = "Job Title:"
-    $jobTitleLabel.Location = New-Object System.Drawing.Point(15, 28)
+    $jobTitleLabel.Location = New-Object System.Drawing.Point(15, 30)
     $jobTitleLabel.AutoSize = $true
 
     $script:JobTitleComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(100, 25)
+    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(100, 27)
     $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(350, 23)
     $script:JobTitleComboBox.DropDownStyle = "DropDown"
     $script:JobTitleComboBox.AutoCompleteMode = "SuggestAppend"
@@ -762,7 +762,7 @@ function Build-MainForm {
 
     $script:RefreshTitlesButton = New-Object System.Windows.Forms.Button
     $script:RefreshTitlesButton.Text = "Refresh"
-    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 23)
+    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 25)
     $script:RefreshTitlesButton.Size = New-Object System.Drawing.Size(100, 28)
     $script:RefreshTitlesButton.Add_Click({ Refresh-JobTitles })
 
@@ -776,17 +776,17 @@ function Build-MainForm {
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
     $targetUserLabel.Text = "User Email:"
-    $targetUserLabel.Location = New-Object System.Drawing.Point(15, 28)
+    $targetUserLabel.Location = New-Object System.Drawing.Point(15, 30)
     $targetUserLabel.AutoSize = $true
 
     $script:TargetUserTextBox = New-Object System.Windows.Forms.TextBox
-    $script:TargetUserTextBox.Location = New-Object System.Drawing.Point(100, 25)
+    $script:TargetUserTextBox.Location = New-Object System.Drawing.Point(100, 27)
     $script:TargetUserTextBox.Size = New-Object System.Drawing.Size(350, 23)
     try { $script:TargetUserTextBox.PlaceholderText = "user@contoso.com" } catch {}
 
     $script:SearchUserButton = New-Object System.Windows.Forms.Button
     $script:SearchUserButton.Text = "Search"
-    $script:SearchUserButton.Location = New-Object System.Drawing.Point(470, 23)
+    $script:SearchUserButton.Location = New-Object System.Drawing.Point(470, 25)
     $script:SearchUserButton.Size = New-Object System.Drawing.Size(100, 28)
     $script:SearchUserButton.Add_Click({ Search-TargetUser })
 
@@ -800,11 +800,11 @@ function Build-MainForm {
 
     $permissionLabel = New-Object System.Windows.Forms.Label
     $permissionLabel.Text = "Access Level:"
-    $permissionLabel.Location = New-Object System.Drawing.Point(15, 28)
+    $permissionLabel.Location = New-Object System.Drawing.Point(15, 30)
     $permissionLabel.AutoSize = $true
 
     $script:PermissionComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:PermissionComboBox.Location = New-Object System.Drawing.Point(100, 25)
+    $script:PermissionComboBox.Location = New-Object System.Drawing.Point(100, 27)
     $script:PermissionComboBox.Size = New-Object System.Drawing.Size(200, 23)
     $script:PermissionComboBox.DropDownStyle = "DropDownList"
 
@@ -816,7 +816,7 @@ function Build-MainForm {
     $script:PermissionComboBox.SelectedIndex = 6  # Default to Reviewer
 
     $permissionDescLabel = New-Object System.Windows.Forms.Label
-    $permissionDescLabel.Location = New-Object System.Drawing.Point(320, 28)
+    $permissionDescLabel.Location = New-Object System.Drawing.Point(320, 30)
     $permissionDescLabel.Size = New-Object System.Drawing.Size(320, 20)
     $permissionDescLabel.ForeColor = [System.Drawing.Color]::Gray
 
@@ -865,8 +865,8 @@ function Build-MainForm {
     $resultsGroup.Size = New-Object System.Drawing.Size(655, 120)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
-    $script:ResultsTextBox.Location = New-Object System.Drawing.Point(15, 20)
-    $script:ResultsTextBox.Size = New-Object System.Drawing.Size(625, 85)
+    $script:ResultsTextBox.Location = New-Object System.Drawing.Point(15, 25)
+    $script:ResultsTextBox.Size = New-Object System.Drawing.Size(625, 80)
     $script:ResultsTextBox.Multiline = $true
     $script:ResultsTextBox.ScrollBars = "Vertical"
     $script:ResultsTextBox.ReadOnly = $true
