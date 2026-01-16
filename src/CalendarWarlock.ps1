@@ -712,7 +712,7 @@ function Build-MainForm {
     $script:OrganizationTextBox = New-Object System.Windows.Forms.TextBox
     $script:OrganizationTextBox.Location = New-Object System.Drawing.Point(100, 25)
     $script:OrganizationTextBox.Size = New-Object System.Drawing.Size(350, 23)
-    $script:OrganizationTextBox.PlaceholderText = "contoso.onmicrosoft.com"
+    try { $script:OrganizationTextBox.PlaceholderText = "contoso.onmicrosoft.com" } catch {}
 
     $script:ConnectButton = New-Object System.Windows.Forms.Button
     $script:ConnectButton.Text = "Connect"
@@ -782,7 +782,7 @@ function Build-MainForm {
     $script:TargetUserTextBox = New-Object System.Windows.Forms.TextBox
     $script:TargetUserTextBox.Location = New-Object System.Drawing.Point(100, 25)
     $script:TargetUserTextBox.Size = New-Object System.Drawing.Size(350, 23)
-    $script:TargetUserTextBox.PlaceholderText = "user@contoso.com"
+    try { $script:TargetUserTextBox.PlaceholderText = "user@contoso.com" } catch {}
 
     $script:SearchUserButton = New-Object System.Windows.Forms.Button
     $script:SearchUserButton.Text = "Search"
