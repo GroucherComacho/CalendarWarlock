@@ -670,7 +670,7 @@ function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
     $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
-    $script:MainForm.Size = New-Object System.Drawing.Size(700, 650)
+    $script:MainForm.Size = New-Object System.Drawing.Size(700, 700)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
@@ -679,7 +679,7 @@ function Build-MainForm {
     # Header Panel
     $headerPanel = New-Object System.Windows.Forms.Panel
     $headerPanel.Location = New-Object System.Drawing.Point(0, 0)
-    $headerPanel.Size = New-Object System.Drawing.Size(700, 60)
+    $headerPanel.Size = New-Object System.Drawing.Size(700, 75)
     $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
 
     $titleLabel = New-Object System.Windows.Forms.Label
@@ -693,7 +693,7 @@ function Build-MainForm {
     $subtitleLabel.Text = "Exchange Online Bulk Calendar Permissions Manager"
     $subtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $subtitleLabel.ForeColor = [System.Drawing.Color]::White
-    $subtitleLabel.Location = New-Object System.Drawing.Point(17, 35)
+    $subtitleLabel.Location = New-Object System.Drawing.Point(20, 42)
     $subtitleLabel.AutoSize = $true
 
     $headerPanel.Controls.AddRange(@($titleLabel, $subtitleLabel))
@@ -701,7 +701,7 @@ function Build-MainForm {
     # Connection Group
     $connectionGroup = New-Object System.Windows.Forms.GroupBox
     $connectionGroup.Text = "Connection"
-    $connectionGroup.Location = New-Object System.Drawing.Point(15, 70)
+    $connectionGroup.Location = New-Object System.Drawing.Point(15, 85)
     $connectionGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $orgLabel = New-Object System.Windows.Forms.Label
@@ -745,7 +745,7 @@ function Build-MainForm {
     # Job Title Selection Group
     $jobTitleGroup = New-Object System.Windows.Forms.GroupBox
     $jobTitleGroup.Text = "Job Title Selection"
-    $jobTitleGroup.Location = New-Object System.Drawing.Point(15, 150)
+    $jobTitleGroup.Location = New-Object System.Drawing.Point(15, 165)
     $jobTitleGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $jobTitleLabel = New-Object System.Windows.Forms.Label
@@ -771,7 +771,7 @@ function Build-MainForm {
     # Target User Group
     $targetUserGroup = New-Object System.Windows.Forms.GroupBox
     $targetUserGroup.Text = "Target User"
-    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 230)
+    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 245)
     $targetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
@@ -795,7 +795,7 @@ function Build-MainForm {
     # Permission Level Group
     $permissionGroup = New-Object System.Windows.Forms.GroupBox
     $permissionGroup.Text = "Permission Level"
-    $permissionGroup.Location = New-Object System.Drawing.Point(15, 310)
+    $permissionGroup.Location = New-Object System.Drawing.Point(15, 325)
     $permissionGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $permissionLabel = New-Object System.Windows.Forms.Label
@@ -835,7 +835,7 @@ function Build-MainForm {
     # Actions Group
     $actionsGroup = New-Object System.Windows.Forms.GroupBox
     $actionsGroup.Text = "Bulk Actions"
-    $actionsGroup.Location = New-Object System.Drawing.Point(15, 390)
+    $actionsGroup.Location = New-Object System.Drawing.Point(15, 405)
     $actionsGroup.Size = New-Object System.Drawing.Size(655, 80)
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
@@ -861,7 +861,7 @@ function Build-MainForm {
     # Results Group
     $resultsGroup = New-Object System.Windows.Forms.GroupBox
     $resultsGroup.Text = "Results Log"
-    $resultsGroup.Location = New-Object System.Drawing.Point(15, 480)
+    $resultsGroup.Location = New-Object System.Drawing.Point(15, 495)
     $resultsGroup.Size = New-Object System.Drawing.Size(655, 120)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
