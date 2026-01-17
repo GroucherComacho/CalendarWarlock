@@ -815,22 +815,22 @@ function Build-MainForm {
     }
     $script:PermissionComboBox.SelectedIndex = 6  # Default to Reviewer
 
-    $permissionDescLabel = New-Object System.Windows.Forms.Label
-    $permissionDescLabel.Location = New-Object System.Drawing.Point(320, 30)
-    $permissionDescLabel.Size = New-Object System.Drawing.Size(320, 20)
-    $permissionDescLabel.ForeColor = [System.Drawing.Color]::Gray
+    $script:PermissionDescLabel = New-Object System.Windows.Forms.Label
+    $script:PermissionDescLabel.Location = New-Object System.Drawing.Point(320, 30)
+    $script:PermissionDescLabel.Size = New-Object System.Drawing.Size(320, 20)
+    $script:PermissionDescLabel.ForeColor = [System.Drawing.Color]::Gray
 
     $script:PermissionComboBox.Add_SelectedIndexChanged({
         $selectedLevel = $script:PermissionComboBox.SelectedItem
         $levels = Get-CalendarPermissionLevels
         $desc = ($levels | Where-Object { $_.Name -eq $selectedLevel }).Description
-        $permissionDescLabel.Text = $desc
+        $script:PermissionDescLabel.Text = $desc
     })
 
     # Trigger initial description update
-    $permissionDescLabel.Text = ($permissionLevels | Where-Object { $_.Name -eq "Reviewer" }).Description
+    $script:PermissionDescLabel.Text = ($permissionLevels | Where-Object { $_.Name -eq "Reviewer" }).Description
 
-    $permissionGroup.Controls.AddRange(@($permissionLabel, $script:PermissionComboBox, $permissionDescLabel))
+    $permissionGroup.Controls.AddRange(@($permissionLabel, $script:PermissionComboBox, $script:PermissionDescLabel))
 
     # Actions Group
     $actionsGroup = New-Object System.Windows.Forms.GroupBox
