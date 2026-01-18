@@ -144,12 +144,17 @@ function Set-UIEnabled {
         $script:ConnectButton,
         $script:OrganizationTextBox,
         $script:JobTitleComboBox,
+        $script:DepartmentComboBox,
+        $script:OfficeComboBox,
         $script:RefreshTitlesButton,
         $script:TargetUserTextBox,
         $script:SearchUserButton,
+        $script:GetPermissionsButton,
         $script:PermissionComboBox,
         $script:GrantToUserButton,
-        $script:GrantToTitleButton
+        $script:GrantToTitleButton,
+        $script:RemoveFromUserButton,
+        $script:RemoveFromTitleButton
     )
 
     foreach ($control in $controls) {
@@ -197,8 +202,8 @@ function Connect-Services {
         Update-ResultsLog "Successfully connected to all services!" "Success"
         Write-Log "Successfully connected to $Organization" "SUCCESS"
 
-        # Load job titles
-        Refresh-JobTitles
+        # Load job titles, departments, and offices
+        Refresh-AllSelections
     }
     catch {
         Update-ResultsLog "Connection failed: $($_.Exception.Message)" "Error"
@@ -231,6 +236,8 @@ function Disconnect-Services {
         $script:ConnectButton.Text = "Connect"
         $script:StatusLabel.Text = "Disconnected"
         $script:JobTitleComboBox.Items.Clear()
+        $script:DepartmentComboBox.Items.Clear()
+        $script:OfficeComboBox.Items.Clear()
 
         Update-ResultsLog "Disconnected from all services" "Success"
         Write-Log "Disconnected from all services" "SUCCESS"
@@ -264,6 +271,64 @@ function Refresh-JobTitles {
     catch {
         Update-ResultsLog "Failed to load job titles: $($_.Exception.Message)" "Error"
     }
+}
+
+function Refresh-Departments {
+    Update-ResultsLog "Loading departments from Azure AD..." "Info"
+    $script:DepartmentComboBox.Items.Clear()
+
+    try {
+        $result = Get-AllDepartments
+
+        if ($result.Success -and $result.Departments.Count -gt 0) {
+            foreach ($dept in $result.Departments) {
+                $script:DepartmentComboBox.Items.Add($dept) | Out-Null
+            }
+            Update-ResultsLog "Loaded $($result.Count) departments" "Success"
+
+            if ($script:DepartmentComboBox.Items.Count -gt 0) {
+                $script:DepartmentComboBox.SelectedIndex = 0
+            }
+        }
+        else {
+            Update-ResultsLog "No departments found or error: $($result.Message)" "Warning"
+        }
+    }
+    catch {
+        Update-ResultsLog "Failed to load departments: $($_.Exception.Message)" "Error"
+    }
+}
+
+function Refresh-Offices {
+    Update-ResultsLog "Loading office locations from Azure AD..." "Info"
+    $script:OfficeComboBox.Items.Clear()
+
+    try {
+        $result = Get-AllOffices
+
+        if ($result.Success -and $result.Offices.Count -gt 0) {
+            foreach ($office in $result.Offices) {
+                $script:OfficeComboBox.Items.Add($office) | Out-Null
+            }
+            Update-ResultsLog "Loaded $($result.Count) office locations" "Success"
+
+            if ($script:OfficeComboBox.Items.Count -gt 0) {
+                $script:OfficeComboBox.SelectedIndex = 0
+            }
+        }
+        else {
+            Update-ResultsLog "No office locations found or error: $($result.Message)" "Warning"
+        }
+    }
+    catch {
+        Update-ResultsLog "Failed to load office locations: $($_.Exception.Message)" "Error"
+    }
+}
+
+function Refresh-AllSelections {
+    Refresh-JobTitles
+    Refresh-Departments
+    Refresh-Offices
 }
 
 function Search-TargetUser {
@@ -318,6 +383,63 @@ function Search-TargetUser {
     }
     catch {
         Update-ResultsLog "Search failed: $($_.Exception.Message)" "Error"
+    }
+}
+
+function Get-TargetUserPermissions {
+    $targetUser = $script:TargetUserTextBox.Text.Trim()
+
+    if ([string]::IsNullOrEmpty($targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a user email to get permissions for.",
+            "Get Permissions",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    Clear-ResultsLog
+    Update-ResultsLog "Getting calendar permissions for: $targetUser" "Info"
+
+    try {
+        $result = Get-CalendarPermissions -CalendarOwner $targetUser
+
+        if ($result.Success) {
+            Update-ResultsLog "-----------------------------------" "Info"
+            Update-ResultsLog "Calendar Permissions for $targetUser" "Info"
+            Update-ResultsLog "-----------------------------------" "Info"
+
+            if ($result.Permissions.Count -eq 0) {
+                Update-ResultsLog "No permissions found" "Warning"
+            }
+            else {
+                foreach ($perm in $result.Permissions) {
+                    $userName = $perm.User.DisplayName
+                    if (-not $userName) { $userName = $perm.User.ToString() }
+                    $accessRights = $perm.AccessRights -join ", "
+                    Update-ResultsLog "$userName : $accessRights" "Success"
+                }
+                Update-ResultsLog "-----------------------------------" "Info"
+                Update-ResultsLog "Total: $($result.Permissions.Count) permission(s)" "Info"
+            }
+        }
+        else {
+            Update-ResultsLog "Failed to get permissions: $($result.Message)" "Error"
+        }
+    }
+    catch {
+        Update-ResultsLog "Error getting permissions: $($_.Exception.Message)" "Error"
     }
 }
 
@@ -387,7 +509,7 @@ function Show-UserSelectionDialog {
 function Grant-BulkPermissionsToUser {
     <#
     .SYNOPSIS
-        Grants a single user access to all calendars of users with a specific job title
+        Grants a single user access to all calendars of users matching the selected method
     #>
 
     if (-not $script:IsConnected) {
@@ -400,19 +522,8 @@ function Grant-BulkPermissionsToUser {
         return
     }
 
-    $jobTitle = $script:JobTitleComboBox.Text.Trim()
     $targetUser = $script:TargetUserTextBox.Text.Trim()
     $permission = $script:PermissionComboBox.SelectedItem
-
-    if ([string]::IsNullOrEmpty($jobTitle)) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please select a job title.",
-            "Missing Information",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Warning
-        )
-        return
-    }
 
     if ([string]::IsNullOrEmpty($targetUser)) {
         [System.Windows.Forms.MessageBox]::Show(
@@ -424,9 +535,20 @@ function Grant-BulkPermissionsToUser {
         return
     }
 
+    $methodResult = Get-UsersForSelectedMethod
+    if (-not $methodResult.Success -and -not $methodResult.Method) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $methodResult.Message,
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     # Confirmation dialog
     $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-        "This will grant '$targetUser' $permission access to the calendars of ALL users with the job title '$jobTitle'.`n`nAre you sure you want to continue?",
+        "This will grant '$targetUser' $permission access to the calendars of ALL users with $($methodResult.Method) '$($methodResult.Value)'.`n`nAre you sure you want to continue?",
         "Confirm Bulk Permission Grant",
         [System.Windows.Forms.MessageBoxButtons]::YesNo,
         [System.Windows.Forms.MessageBoxIcon]::Question
@@ -439,26 +561,25 @@ function Grant-BulkPermissionsToUser {
     Clear-ResultsLog
     Update-ResultsLog "Starting bulk permission grant..." "Info"
     Update-ResultsLog "Target User: $targetUser" "Info"
-    Update-ResultsLog "Job Title: $jobTitle" "Info"
+    Update-ResultsLog "$($methodResult.Method): $($methodResult.Value)" "Info"
     Update-ResultsLog "Permission: $permission" "Info"
-    Write-Log "Grant-BulkPermissionsToUser: User=$targetUser, JobTitle=$jobTitle, Permission=$permission" "INFO"
+    Write-Log "Grant-BulkPermissionsToUser: User=$targetUser, $($methodResult.Method)=$($methodResult.Value), Permission=$permission" "INFO"
 
     Set-UIEnabled -Enabled $false
 
     try {
-        # Get all users with the specified job title
-        Update-ResultsLog "Fetching users with job title '$jobTitle'..." "Info"
-        $usersResult = Get-UsersByJobTitle -JobTitle $jobTitle
+        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
+        $usersResult = Get-UsersForSelectedMethod
 
         if (-not $usersResult.Success) {
             throw $usersResult.Message
         }
 
         $users = $usersResult.Users
-        Update-ResultsLog "Found $($users.Count) users with job title '$jobTitle'" "Info"
+        Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
-            Update-ResultsLog "No users found with this job title." "Warning"
+            Update-ResultsLog "No users found." "Warning"
             return
         }
 
@@ -527,7 +648,7 @@ function Grant-BulkPermissionsToUser {
 function Grant-BulkPermissionsToTitle {
     <#
     .SYNOPSIS
-        Grants all users with a specific job title access to a single user's calendar
+        Grants all users matching the selected method access to a single user's calendar
     #>
 
     if (-not $script:IsConnected) {
@@ -540,19 +661,8 @@ function Grant-BulkPermissionsToTitle {
         return
     }
 
-    $jobTitle = $script:JobTitleComboBox.Text.Trim()
     $calendarOwner = $script:TargetUserTextBox.Text.Trim()
     $permission = $script:PermissionComboBox.SelectedItem
-
-    if ([string]::IsNullOrEmpty($jobTitle)) {
-        [System.Windows.Forms.MessageBox]::Show(
-            "Please select a job title.",
-            "Missing Information",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Warning
-        )
-        return
-    }
 
     if ([string]::IsNullOrEmpty($calendarOwner)) {
         [System.Windows.Forms.MessageBox]::Show(
@@ -564,9 +674,20 @@ function Grant-BulkPermissionsToTitle {
         return
     }
 
+    $methodResult = Get-UsersForSelectedMethod
+    if (-not $methodResult.Success -and -not $methodResult.Method) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $methodResult.Message,
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     # Confirmation dialog
     $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-        "This will grant ALL users with the job title '$jobTitle' $permission access to $calendarOwner's calendar.`n`nAre you sure you want to continue?",
+        "This will grant ALL users with $($methodResult.Method) '$($methodResult.Value)' $permission access to $calendarOwner's calendar.`n`nAre you sure you want to continue?",
         "Confirm Bulk Permission Grant",
         [System.Windows.Forms.MessageBoxButtons]::YesNo,
         [System.Windows.Forms.MessageBoxIcon]::Question
@@ -579,26 +700,25 @@ function Grant-BulkPermissionsToTitle {
     Clear-ResultsLog
     Update-ResultsLog "Starting bulk permission grant..." "Info"
     Update-ResultsLog "Calendar Owner: $calendarOwner" "Info"
-    Update-ResultsLog "Job Title: $jobTitle" "Info"
+    Update-ResultsLog "$($methodResult.Method): $($methodResult.Value)" "Info"
     Update-ResultsLog "Permission: $permission" "Info"
-    Write-Log "Grant-BulkPermissionsToTitle: Owner=$calendarOwner, JobTitle=$jobTitle, Permission=$permission" "INFO"
+    Write-Log "Grant-BulkPermissionsToTitle: Owner=$calendarOwner, $($methodResult.Method)=$($methodResult.Value), Permission=$permission" "INFO"
 
     Set-UIEnabled -Enabled $false
 
     try {
-        # Get all users with the specified job title
-        Update-ResultsLog "Fetching users with job title '$jobTitle'..." "Info"
-        $usersResult = Get-UsersByJobTitle -JobTitle $jobTitle
+        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
+        $usersResult = Get-UsersForSelectedMethod
 
         if (-not $usersResult.Success) {
             throw $usersResult.Message
         }
 
         $users = $usersResult.Users
-        Update-ResultsLog "Found $($users.Count) users with job title '$jobTitle'" "Info"
+        Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
-            Update-ResultsLog "No users found with this job title." "Warning"
+            Update-ResultsLog "No users found." "Warning"
             return
         }
 
@@ -663,6 +783,338 @@ function Grant-BulkPermissionsToTitle {
         Update-ProgressBar -Value 0
     }
 }
+
+function Get-UsersForSelectedMethod {
+    <#
+    .SYNOPSIS
+        Gets users based on the currently selected method (Job Title, Department, or Office)
+    .DESCRIPTION
+        Returns users filtered by whichever method dropdown has a selection
+    #>
+
+    $jobTitle = $script:JobTitleComboBox.Text.Trim()
+    $department = $script:DepartmentComboBox.Text.Trim()
+    $office = $script:OfficeComboBox.Text.Trim()
+
+    # Determine which method to use - prioritize in order: Job Title, Department, Office
+    if (-not [string]::IsNullOrEmpty($jobTitle)) {
+        $result = Get-UsersByJobTitle -JobTitle $jobTitle
+        return @{
+            Success = $result.Success
+            Users = $result.Users
+            Count = $result.Count
+            Method = "Job Title"
+            Value = $jobTitle
+            Message = $result.Message
+        }
+    }
+    elseif (-not [string]::IsNullOrEmpty($department)) {
+        $result = Get-UsersByDepartment -Department $department
+        return @{
+            Success = $result.Success
+            Users = $result.Users
+            Count = $result.Count
+            Method = "Department"
+            Value = $department
+            Message = $result.Message
+        }
+    }
+    elseif (-not [string]::IsNullOrEmpty($office)) {
+        $result = Get-UsersByOffice -Office $office
+        return @{
+            Success = $result.Success
+            Users = $result.Users
+            Count = $result.Count
+            Method = "Office"
+            Value = $office
+            Message = $result.Message
+        }
+    }
+    else {
+        return @{
+            Success = $false
+            Users = @()
+            Count = 0
+            Method = $null
+            Value = $null
+            Message = "Please select a Job Title, Department, or Office"
+        }
+    }
+}
+
+function Remove-BulkPermissionsFromUser {
+    <#
+    .SYNOPSIS
+        Removes a single user's access from all calendars of users matching the selected method
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $targetUser = $script:TargetUserTextBox.Text.Trim()
+
+    if ([string]::IsNullOrEmpty($targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a target user email.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $methodResult = Get-UsersForSelectedMethod
+    if (-not $methodResult.Success -and -not $methodResult.Method) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $methodResult.Message,
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Confirmation dialog
+    $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+        "This will REMOVE '$targetUser' access from the calendars of ALL users with $($methodResult.Method) '$($methodResult.Value)'.`n`nAre you sure you want to continue?",
+        "Confirm Bulk Permission Removal",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+
+    if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    Clear-ResultsLog
+    Update-ResultsLog "Starting bulk permission removal..." "Info"
+    Update-ResultsLog "Target User: $targetUser" "Info"
+    Update-ResultsLog "$($methodResult.Method): $($methodResult.Value)" "Info"
+    Write-Log "Remove-BulkPermissionsFromUser: User=$targetUser, $($methodResult.Method)=$($methodResult.Value)" "INFO"
+
+    Set-UIEnabled -Enabled $false
+
+    try {
+        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
+        $usersResult = Get-UsersForSelectedMethod
+
+        if (-not $usersResult.Success) {
+            throw $usersResult.Message
+        }
+
+        $users = $usersResult.Users
+        Update-ResultsLog "Found $($users.Count) users" "Info"
+
+        if ($users.Count -eq 0) {
+            Update-ResultsLog "No users found." "Warning"
+            return
+        }
+
+        $successCount = 0
+        $failCount = 0
+        $skipCount = 0
+
+        Update-ProgressBar -Value 0 -Maximum $users.Count
+
+        for ($i = 0; $i -lt $users.Count; $i++) {
+            $user = $users[$i]
+
+            # Skip if removing from themselves
+            if ($user.Email -eq $targetUser -or $user.UserPrincipalName -eq $targetUser) {
+                Update-ResultsLog "Skipping $($user.DisplayName) (same as target user)" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+                continue
+            }
+
+            Update-ResultsLog "Removing access from $($user.DisplayName)'s calendar..." "Info"
+
+            $result = Remove-CalendarPermission -CalendarOwner $user.Email -Trustee $targetUser
+
+            if ($result.Success) {
+                Update-ResultsLog "Removed: $($user.DisplayName) ($($user.Email))" "Success"
+                $successCount++
+            }
+            else {
+                Update-ResultsLog "Failed: $($user.DisplayName) - $($result.Message)" "Error"
+                $failCount++
+            }
+
+            Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+        }
+
+        Update-ResultsLog "-----------------------------------" "Info"
+        Update-ResultsLog "Bulk removal completed!" "Success"
+        Update-ResultsLog "Success: $successCount | Failed: $failCount | Skipped: $skipCount" "Info"
+        Write-Log "Bulk removal completed: Success=$successCount, Failed=$failCount, Skipped=$skipCount" "SUCCESS"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Bulk permission removal completed!`n`nSuccess: $successCount`nFailed: $failCount`nSkipped: $skipCount",
+            "Operation Complete",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+        Update-ProgressBar -Value 0
+    }
+}
+
+function Remove-BulkPermissionsFromTitle {
+    <#
+    .SYNOPSIS
+        Removes all users matching the selected method from a single user's calendar
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $calendarOwner = $script:TargetUserTextBox.Text.Trim()
+
+    if ([string]::IsNullOrEmpty($calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter the calendar owner's email.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $methodResult = Get-UsersForSelectedMethod
+    if (-not $methodResult.Success -and -not $methodResult.Method) {
+        [System.Windows.Forms.MessageBox]::Show(
+            $methodResult.Message,
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Confirmation dialog
+    $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+        "This will REMOVE access for ALL users with $($methodResult.Method) '$($methodResult.Value)' from $calendarOwner's calendar.`n`nAre you sure you want to continue?",
+        "Confirm Bulk Permission Removal",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+
+    if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    Clear-ResultsLog
+    Update-ResultsLog "Starting bulk permission removal..." "Info"
+    Update-ResultsLog "Calendar Owner: $calendarOwner" "Info"
+    Update-ResultsLog "$($methodResult.Method): $($methodResult.Value)" "Info"
+    Write-Log "Remove-BulkPermissionsFromTitle: Owner=$calendarOwner, $($methodResult.Method)=$($methodResult.Value)" "INFO"
+
+    Set-UIEnabled -Enabled $false
+
+    try {
+        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
+        $usersResult = Get-UsersForSelectedMethod
+
+        if (-not $usersResult.Success) {
+            throw $usersResult.Message
+        }
+
+        $users = $usersResult.Users
+        Update-ResultsLog "Found $($users.Count) users" "Info"
+
+        if ($users.Count -eq 0) {
+            Update-ResultsLog "No users found." "Warning"
+            return
+        }
+
+        $successCount = 0
+        $failCount = 0
+        $skipCount = 0
+
+        Update-ProgressBar -Value 0 -Maximum $users.Count
+
+        for ($i = 0; $i -lt $users.Count; $i++) {
+            $user = $users[$i]
+
+            # Skip if removing from themselves
+            if ($user.Email -eq $calendarOwner -or $user.UserPrincipalName -eq $calendarOwner) {
+                Update-ResultsLog "Skipping $($user.DisplayName) (calendar owner)" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+                continue
+            }
+
+            Update-ResultsLog "Removing $($user.DisplayName)'s access from calendar..." "Info"
+
+            $result = Remove-CalendarPermission -CalendarOwner $calendarOwner -Trustee $user.Email
+
+            if ($result.Success) {
+                Update-ResultsLog "Removed: $($user.DisplayName) ($($user.Email))" "Success"
+                $successCount++
+            }
+            else {
+                Update-ResultsLog "Failed: $($user.DisplayName) - $($result.Message)" "Error"
+                $failCount++
+            }
+
+            Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+        }
+
+        Update-ResultsLog "-----------------------------------" "Info"
+        Update-ResultsLog "Bulk removal completed!" "Success"
+        Update-ResultsLog "Success: $successCount | Failed: $failCount | Skipped: $skipCount" "Info"
+        Write-Log "Bulk removal completed: Success=$successCount, Failed=$failCount, Skipped=$skipCount" "SUCCESS"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Bulk permission removal completed!`n`nSuccess: $successCount`nFailed: $failCount`nSkipped: $skipCount",
+            "Operation Complete",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+        Update-ProgressBar -Value 0
+    }
+}
 #endregion
 
 #region Build Main Form
@@ -670,7 +1122,7 @@ function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
     $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
-    $script:MainForm.Size = New-Object System.Drawing.Size(700, 700)
+    $script:MainForm.Size = New-Object System.Drawing.Size(700, 820)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
@@ -742,36 +1194,60 @@ function Build-MainForm {
 
     $connectionGroup.Controls.AddRange(@($orgLabel, $script:OrganizationTextBox, $script:ConnectButton))
 
-    # Job Title Selection Group
-    $jobTitleGroup = New-Object System.Windows.Forms.GroupBox
-    $jobTitleGroup.Text = "Job Title Selection"
-    $jobTitleGroup.Location = New-Object System.Drawing.Point(15, 165)
-    $jobTitleGroup.Size = New-Object System.Drawing.Size(655, 70)
+    # Method Selection Group
+    $methodGroup = New-Object System.Windows.Forms.GroupBox
+    $methodGroup.Text = "Method Selection"
+    $methodGroup.Location = New-Object System.Drawing.Point(15, 165)
+    $methodGroup.Size = New-Object System.Drawing.Size(655, 130)
 
     $jobTitleLabel = New-Object System.Windows.Forms.Label
     $jobTitleLabel.Text = "Job Title:"
-    $jobTitleLabel.Location = New-Object System.Drawing.Point(15, 30)
+    $jobTitleLabel.Location = New-Object System.Drawing.Point(15, 28)
     $jobTitleLabel.AutoSize = $true
 
     $script:JobTitleComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(100, 27)
+    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(100, 25)
     $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(350, 23)
     $script:JobTitleComboBox.DropDownStyle = "DropDown"
     $script:JobTitleComboBox.AutoCompleteMode = "SuggestAppend"
     $script:JobTitleComboBox.AutoCompleteSource = "ListItems"
 
+    $departmentLabel = New-Object System.Windows.Forms.Label
+    $departmentLabel.Text = "Department:"
+    $departmentLabel.Location = New-Object System.Drawing.Point(15, 60)
+    $departmentLabel.AutoSize = $true
+
+    $script:DepartmentComboBox = New-Object System.Windows.Forms.ComboBox
+    $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(100, 57)
+    $script:DepartmentComboBox.Size = New-Object System.Drawing.Size(350, 23)
+    $script:DepartmentComboBox.DropDownStyle = "DropDown"
+    $script:DepartmentComboBox.AutoCompleteMode = "SuggestAppend"
+    $script:DepartmentComboBox.AutoCompleteSource = "ListItems"
+
+    $officeLabel = New-Object System.Windows.Forms.Label
+    $officeLabel.Text = "Office:"
+    $officeLabel.Location = New-Object System.Drawing.Point(15, 92)
+    $officeLabel.AutoSize = $true
+
+    $script:OfficeComboBox = New-Object System.Windows.Forms.ComboBox
+    $script:OfficeComboBox.Location = New-Object System.Drawing.Point(100, 89)
+    $script:OfficeComboBox.Size = New-Object System.Drawing.Size(350, 23)
+    $script:OfficeComboBox.DropDownStyle = "DropDown"
+    $script:OfficeComboBox.AutoCompleteMode = "SuggestAppend"
+    $script:OfficeComboBox.AutoCompleteSource = "ListItems"
+
     $script:RefreshTitlesButton = New-Object System.Windows.Forms.Button
     $script:RefreshTitlesButton.Text = "Refresh"
-    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 25)
+    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 55)
     $script:RefreshTitlesButton.Size = New-Object System.Drawing.Size(100, 28)
-    $script:RefreshTitlesButton.Add_Click({ Refresh-JobTitles })
+    $script:RefreshTitlesButton.Add_Click({ Refresh-AllSelections })
 
-    $jobTitleGroup.Controls.AddRange(@($jobTitleLabel, $script:JobTitleComboBox, $script:RefreshTitlesButton))
+    $methodGroup.Controls.AddRange(@($jobTitleLabel, $script:JobTitleComboBox, $departmentLabel, $script:DepartmentComboBox, $officeLabel, $script:OfficeComboBox, $script:RefreshTitlesButton))
 
     # Target User Group
     $targetUserGroup = New-Object System.Windows.Forms.GroupBox
     $targetUserGroup.Text = "Target User"
-    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 245)
+    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 305)
     $targetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
@@ -781,21 +1257,27 @@ function Build-MainForm {
 
     $script:TargetUserTextBox = New-Object System.Windows.Forms.TextBox
     $script:TargetUserTextBox.Location = New-Object System.Drawing.Point(100, 27)
-    $script:TargetUserTextBox.Size = New-Object System.Drawing.Size(350, 23)
+    $script:TargetUserTextBox.Size = New-Object System.Drawing.Size(280, 23)
     try { $script:TargetUserTextBox.PlaceholderText = "user@contoso.com" } catch {}
 
     $script:SearchUserButton = New-Object System.Windows.Forms.Button
     $script:SearchUserButton.Text = "Search"
-    $script:SearchUserButton.Location = New-Object System.Drawing.Point(470, 25)
-    $script:SearchUserButton.Size = New-Object System.Drawing.Size(100, 28)
+    $script:SearchUserButton.Location = New-Object System.Drawing.Point(395, 25)
+    $script:SearchUserButton.Size = New-Object System.Drawing.Size(80, 28)
     $script:SearchUserButton.Add_Click({ Search-TargetUser })
 
-    $targetUserGroup.Controls.AddRange(@($targetUserLabel, $script:TargetUserTextBox, $script:SearchUserButton))
+    $script:GetPermissionsButton = New-Object System.Windows.Forms.Button
+    $script:GetPermissionsButton.Text = "Get Permissions"
+    $script:GetPermissionsButton.Location = New-Object System.Drawing.Point(485, 25)
+    $script:GetPermissionsButton.Size = New-Object System.Drawing.Size(110, 28)
+    $script:GetPermissionsButton.Add_Click({ Get-TargetUserPermissions })
+
+    $targetUserGroup.Controls.AddRange(@($targetUserLabel, $script:TargetUserTextBox, $script:SearchUserButton, $script:GetPermissionsButton))
 
     # Permission Level Group
     $permissionGroup = New-Object System.Windows.Forms.GroupBox
     $permissionGroup.Text = "Permission Level"
-    $permissionGroup.Location = New-Object System.Drawing.Point(15, 325)
+    $permissionGroup.Location = New-Object System.Drawing.Point(15, 385)
     $permissionGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $permissionLabel = New-Object System.Windows.Forms.Label
@@ -835,12 +1317,12 @@ function Build-MainForm {
     # Actions Group
     $actionsGroup = New-Object System.Windows.Forms.GroupBox
     $actionsGroup.Text = "Bulk Actions"
-    $actionsGroup.Location = New-Object System.Drawing.Point(15, 405)
-    $actionsGroup.Size = New-Object System.Drawing.Size(655, 80)
+    $actionsGroup.Location = New-Object System.Drawing.Point(15, 465)
+    $actionsGroup.Size = New-Object System.Drawing.Size(655, 120)
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
-    $script:GrantToUserButton.Text = "Grant User Access to All Calendars of Job Title"
-    $script:GrantToUserButton.Location = New-Object System.Drawing.Point(15, 30)
+    $script:GrantToUserButton.Text = "Grant User Access to All Calendars of Selection"
+    $script:GrantToUserButton.Location = New-Object System.Drawing.Point(15, 25)
     $script:GrantToUserButton.Size = New-Object System.Drawing.Size(305, 35)
     $script:GrantToUserButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 0)
     $script:GrantToUserButton.ForeColor = [System.Drawing.Color]::White
@@ -848,25 +1330,43 @@ function Build-MainForm {
     $script:GrantToUserButton.Add_Click({ Grant-BulkPermissionsToUser })
 
     $script:GrantToTitleButton = New-Object System.Windows.Forms.Button
-    $script:GrantToTitleButton.Text = "Grant All of Job Title Access to User's Calendar"
-    $script:GrantToTitleButton.Location = New-Object System.Drawing.Point(335, 30)
+    $script:GrantToTitleButton.Text = "Grant All of Selection Access to User's Calendar"
+    $script:GrantToTitleButton.Location = New-Object System.Drawing.Point(335, 25)
     $script:GrantToTitleButton.Size = New-Object System.Drawing.Size(305, 35)
     $script:GrantToTitleButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
     $script:GrantToTitleButton.ForeColor = [System.Drawing.Color]::White
     $script:GrantToTitleButton.FlatStyle = "Flat"
     $script:GrantToTitleButton.Add_Click({ Grant-BulkPermissionsToTitle })
 
-    $actionsGroup.Controls.AddRange(@($script:GrantToUserButton, $script:GrantToTitleButton))
+    $script:RemoveFromUserButton = New-Object System.Windows.Forms.Button
+    $script:RemoveFromUserButton.Text = "Remove User Access from All Calendars of Selection"
+    $script:RemoveFromUserButton.Location = New-Object System.Drawing.Point(15, 70)
+    $script:RemoveFromUserButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:RemoveFromUserButton.BackColor = [System.Drawing.Color]::FromArgb(180, 50, 50)
+    $script:RemoveFromUserButton.ForeColor = [System.Drawing.Color]::White
+    $script:RemoveFromUserButton.FlatStyle = "Flat"
+    $script:RemoveFromUserButton.Add_Click({ Remove-BulkPermissionsFromUser })
+
+    $script:RemoveFromTitleButton = New-Object System.Windows.Forms.Button
+    $script:RemoveFromTitleButton.Text = "Remove All of Selection Access from User's Calendar"
+    $script:RemoveFromTitleButton.Location = New-Object System.Drawing.Point(335, 70)
+    $script:RemoveFromTitleButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:RemoveFromTitleButton.BackColor = [System.Drawing.Color]::FromArgb(150, 50, 50)
+    $script:RemoveFromTitleButton.ForeColor = [System.Drawing.Color]::White
+    $script:RemoveFromTitleButton.FlatStyle = "Flat"
+    $script:RemoveFromTitleButton.Add_Click({ Remove-BulkPermissionsFromTitle })
+
+    $actionsGroup.Controls.AddRange(@($script:GrantToUserButton, $script:GrantToTitleButton, $script:RemoveFromUserButton, $script:RemoveFromTitleButton))
 
     # Results Group
     $resultsGroup = New-Object System.Windows.Forms.GroupBox
     $resultsGroup.Text = "Results Log"
-    $resultsGroup.Location = New-Object System.Drawing.Point(15, 495)
-    $resultsGroup.Size = New-Object System.Drawing.Size(655, 120)
+    $resultsGroup.Location = New-Object System.Drawing.Point(15, 595)
+    $resultsGroup.Size = New-Object System.Drawing.Size(655, 140)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
     $script:ResultsTextBox.Location = New-Object System.Drawing.Point(15, 25)
-    $script:ResultsTextBox.Size = New-Object System.Drawing.Size(625, 80)
+    $script:ResultsTextBox.Size = New-Object System.Drawing.Size(625, 100)
     $script:ResultsTextBox.Multiline = $true
     $script:ResultsTextBox.ScrollBars = "Vertical"
     $script:ResultsTextBox.ReadOnly = $true
@@ -894,7 +1394,7 @@ function Build-MainForm {
     $script:MainForm.Controls.AddRange(@(
         $headerPanel,
         $connectionGroup,
-        $jobTitleGroup,
+        $methodGroup,
         $targetUserGroup,
         $permissionGroup,
         $actionsGroup,
