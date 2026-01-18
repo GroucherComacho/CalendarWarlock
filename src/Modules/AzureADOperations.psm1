@@ -217,6 +217,224 @@ function Get-AllJobTitles {
     }
 }
 
+function Get-AllDepartments {
+    <#
+    .SYNOPSIS
+        Gets all unique departments in the organization
+    .DESCRIPTION
+        Retrieves all users and extracts unique departments for use in dropdowns/autocomplete
+    .EXAMPLE
+        Get-AllDepartments
+    #>
+    [CmdletBinding()]
+    param()
+
+    try {
+        # Get all users with departments
+        $users = Get-MgUser -Property "Department" -All -ErrorAction Stop |
+                 Where-Object { $_.Department -and $_.Department.Trim() -ne "" }
+
+        $departments = $users | Select-Object -ExpandProperty Department | Sort-Object -Unique
+
+        return @{
+            Success = $true
+            Departments = $departments
+            Count = $departments.Count
+            Message = "Found $($departments.Count) unique department(s)"
+        }
+    }
+    catch {
+        return @{
+            Success = $false
+            Departments = @()
+            Count = 0
+            Message = "Failed to get departments: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Get-AllOffices {
+    <#
+    .SYNOPSIS
+        Gets all unique office locations in the organization
+    .DESCRIPTION
+        Retrieves all users and extracts unique office locations for use in dropdowns/autocomplete
+    .EXAMPLE
+        Get-AllOffices
+    #>
+    [CmdletBinding()]
+    param()
+
+    try {
+        # Get all users with office locations
+        $users = Get-MgUser -Property "OfficeLocation" -All -ErrorAction Stop |
+                 Where-Object { $_.OfficeLocation -and $_.OfficeLocation.Trim() -ne "" }
+
+        $offices = $users | Select-Object -ExpandProperty OfficeLocation | Sort-Object -Unique
+
+        return @{
+            Success = $true
+            Offices = $offices
+            Count = $offices.Count
+            Message = "Found $($offices.Count) unique office location(s)"
+        }
+    }
+    catch {
+        return @{
+            Success = $false
+            Offices = @()
+            Count = 0
+            Message = "Failed to get office locations: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Get-UsersByDepartment {
+    <#
+    .SYNOPSIS
+        Gets all users in a specific department
+    .PARAMETER Department
+        The department to search for (case-insensitive, exact match)
+    .PARAMETER IncludeDisabled
+        Include disabled/blocked user accounts
+    .EXAMPLE
+        Get-UsersByDepartment -Department "Engineering"
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Department,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$IncludeDisabled
+    )
+
+    try {
+        # Build filter - escape single quotes in department
+        $escapedDepartment = $Department.Replace("'", "''")
+        $filter = "department eq '$escapedDepartment'"
+
+        if (-not $IncludeDisabled) {
+            $filter += " and accountEnabled eq true"
+        }
+
+        # Get users with the specified department
+        $users = Get-MgUser -Filter $filter -Property @(
+            "Id",
+            "DisplayName",
+            "UserPrincipalName",
+            "Mail",
+            "JobTitle",
+            "Department",
+            "OfficeLocation",
+            "AccountEnabled"
+        ) -All -ErrorAction Stop
+
+        $userList = @()
+        foreach ($user in $users) {
+            $userList += @{
+                Id = $user.Id
+                DisplayName = $user.DisplayName
+                Email = if ($user.Mail) { $user.Mail } else { $user.UserPrincipalName }
+                UserPrincipalName = $user.UserPrincipalName
+                JobTitle = $user.JobTitle
+                Department = $user.Department
+                OfficeLocation = $user.OfficeLocation
+                Enabled = $user.AccountEnabled
+            }
+        }
+
+        return @{
+            Success = $true
+            Users = $userList
+            Count = $userList.Count
+            Message = "Found $($userList.Count) user(s) in department '$Department'"
+        }
+    }
+    catch {
+        return @{
+            Success = $false
+            Users = @()
+            Count = 0
+            Message = "Failed to get users: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Get-UsersByOffice {
+    <#
+    .SYNOPSIS
+        Gets all users in a specific office location
+    .PARAMETER Office
+        The office location to search for (case-insensitive, exact match)
+    .PARAMETER IncludeDisabled
+        Include disabled/blocked user accounts
+    .EXAMPLE
+        Get-UsersByOffice -Office "New York"
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Office,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$IncludeDisabled
+    )
+
+    try {
+        # Build filter - escape single quotes in office
+        $escapedOffice = $Office.Replace("'", "''")
+        $filter = "officeLocation eq '$escapedOffice'"
+
+        if (-not $IncludeDisabled) {
+            $filter += " and accountEnabled eq true"
+        }
+
+        # Get users with the specified office location
+        $users = Get-MgUser -Filter $filter -Property @(
+            "Id",
+            "DisplayName",
+            "UserPrincipalName",
+            "Mail",
+            "JobTitle",
+            "Department",
+            "OfficeLocation",
+            "AccountEnabled"
+        ) -All -ErrorAction Stop
+
+        $userList = @()
+        foreach ($user in $users) {
+            $userList += @{
+                Id = $user.Id
+                DisplayName = $user.DisplayName
+                Email = if ($user.Mail) { $user.Mail } else { $user.UserPrincipalName }
+                UserPrincipalName = $user.UserPrincipalName
+                JobTitle = $user.JobTitle
+                Department = $user.Department
+                OfficeLocation = $user.OfficeLocation
+                Enabled = $user.AccountEnabled
+            }
+        }
+
+        return @{
+            Success = $true
+            Users = $userList
+            Count = $userList.Count
+            Message = "Found $($userList.Count) user(s) in office '$Office'"
+        }
+    }
+    catch {
+        return @{
+            Success = $false
+            Users = @()
+            Count = 0
+            Message = "Failed to get users: $($_.Exception.Message)"
+        }
+    }
+}
+
 function Get-UserByEmail {
     <#
     .SYNOPSIS
@@ -362,6 +580,10 @@ Export-ModuleMember -Function @(
     'Test-GraphConnection',
     'Get-UsersByJobTitle',
     'Get-AllJobTitles',
+    'Get-AllDepartments',
+    'Get-AllOffices',
+    'Get-UsersByDepartment',
+    'Get-UsersByOffice',
     'Get-UserByEmail',
     'Search-Users'
 )
