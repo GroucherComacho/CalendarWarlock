@@ -143,9 +143,10 @@ function Set-UIEnabled {
     $controls = @(
         $script:ConnectButton,
         $script:OrganizationTextBox,
+        $script:JobTitleRadio,
+        $script:DepartmentRadio,
         $script:JobTitleComboBox,
         $script:DepartmentComboBox,
-        $script:OfficeComboBox,
         $script:RefreshTitlesButton,
         $script:TargetUserTextBox,
         $script:SearchUserButton,
@@ -161,6 +162,12 @@ function Set-UIEnabled {
         if ($control) {
             $control.Enabled = $Enabled
         }
+    }
+
+    # When enabling, respect the radio button state for combo boxes
+    if ($Enabled) {
+        $script:JobTitleComboBox.Enabled = $script:JobTitleRadio.Checked
+        $script:DepartmentComboBox.Enabled = $script:DepartmentRadio.Checked
     }
 }
 #endregion
@@ -237,7 +244,6 @@ function Disconnect-Services {
         $script:StatusLabel.Text = "Disconnected"
         $script:JobTitleComboBox.Items.Clear()
         $script:DepartmentComboBox.Items.Clear()
-        $script:OfficeComboBox.Items.Clear()
 
         Update-ResultsLog "Disconnected from all services" "Success"
         Write-Log "Disconnected from all services" "SUCCESS"
@@ -299,36 +305,9 @@ function Refresh-Departments {
     }
 }
 
-function Refresh-Offices {
-    Update-ResultsLog "Loading office locations from Azure AD..." "Info"
-    $script:OfficeComboBox.Items.Clear()
-
-    try {
-        $result = Get-AllOffices
-
-        if ($result.Success -and $result.Offices.Count -gt 0) {
-            foreach ($office in $result.Offices) {
-                $script:OfficeComboBox.Items.Add($office) | Out-Null
-            }
-            Update-ResultsLog "Loaded $($result.Count) office locations" "Success"
-
-            if ($script:OfficeComboBox.Items.Count -gt 0) {
-                $script:OfficeComboBox.SelectedIndex = 0
-            }
-        }
-        else {
-            Update-ResultsLog "No office locations found or error: $($result.Message)" "Warning"
-        }
-    }
-    catch {
-        Update-ResultsLog "Failed to load office locations: $($_.Exception.Message)" "Error"
-    }
-}
-
 function Refresh-AllSelections {
     Refresh-JobTitles
     Refresh-Departments
-    Refresh-Offices
 }
 
 function Search-TargetUser {
@@ -787,17 +766,24 @@ function Grant-BulkPermissionsToTitle {
 function Get-UsersForSelectedMethod {
     <#
     .SYNOPSIS
-        Gets users based on the currently selected method (Job Title, Department, or Office)
+        Gets users based on the currently selected method (Job Title or Department)
     .DESCRIPTION
-        Returns users filtered by whichever method dropdown has a selection
+        Returns users filtered by the selected radio button option
     #>
 
-    $jobTitle = $script:JobTitleComboBox.Text.Trim()
-    $department = $script:DepartmentComboBox.Text.Trim()
-    $office = $script:OfficeComboBox.Text.Trim()
-
-    # Determine which method to use - prioritize in order: Job Title, Department, Office
-    if (-not [string]::IsNullOrEmpty($jobTitle)) {
+    # Determine which method to use based on radio button selection
+    if ($script:JobTitleRadio.Checked) {
+        $jobTitle = $script:JobTitleComboBox.Text.Trim()
+        if ([string]::IsNullOrEmpty($jobTitle)) {
+            return @{
+                Success = $false
+                Users = @()
+                Count = 0
+                Method = $null
+                Value = $null
+                Message = "Please select a Job Title"
+            }
+        }
         $result = Get-UsersByJobTitle -JobTitle $jobTitle
         return @{
             Success = $result.Success
@@ -808,7 +794,18 @@ function Get-UsersForSelectedMethod {
             Message = $result.Message
         }
     }
-    elseif (-not [string]::IsNullOrEmpty($department)) {
+    elseif ($script:DepartmentRadio.Checked) {
+        $department = $script:DepartmentComboBox.Text.Trim()
+        if ([string]::IsNullOrEmpty($department)) {
+            return @{
+                Success = $false
+                Users = @()
+                Count = 0
+                Method = $null
+                Value = $null
+                Message = "Please select a Department"
+            }
+        }
         $result = Get-UsersByDepartment -Department $department
         return @{
             Success = $result.Success
@@ -819,17 +816,6 @@ function Get-UsersForSelectedMethod {
             Message = $result.Message
         }
     }
-    elseif (-not [string]::IsNullOrEmpty($office)) {
-        $result = Get-UsersByOffice -Office $office
-        return @{
-            Success = $result.Success
-            Users = $result.Users
-            Count = $result.Count
-            Method = "Office"
-            Value = $office
-            Message = $result.Message
-        }
-    }
     else {
         return @{
             Success = $false
@@ -837,7 +823,7 @@ function Get-UsersForSelectedMethod {
             Count = 0
             Method = $null
             Value = $null
-            Message = "Please select a Job Title, Department, or Office"
+            Message = "Please select Job Title or Department"
         }
     }
 }
@@ -1122,7 +1108,7 @@ function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
     $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
-    $script:MainForm.Size = New-Object System.Drawing.Size(700, 820)
+    $script:MainForm.Size = New-Object System.Drawing.Size(700, 790)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
@@ -1198,56 +1184,59 @@ function Build-MainForm {
     $methodGroup = New-Object System.Windows.Forms.GroupBox
     $methodGroup.Text = "Method Selection"
     $methodGroup.Location = New-Object System.Drawing.Point(15, 165)
-    $methodGroup.Size = New-Object System.Drawing.Size(655, 130)
+    $methodGroup.Size = New-Object System.Drawing.Size(655, 100)
 
-    $jobTitleLabel = New-Object System.Windows.Forms.Label
-    $jobTitleLabel.Text = "Job Title:"
-    $jobTitleLabel.Location = New-Object System.Drawing.Point(15, 28)
-    $jobTitleLabel.AutoSize = $true
+    # Radio buttons for method selection
+    $script:JobTitleRadio = New-Object System.Windows.Forms.RadioButton
+    $script:JobTitleRadio.Text = "Job Title"
+    $script:JobTitleRadio.Location = New-Object System.Drawing.Point(15, 25)
+    $script:JobTitleRadio.Size = New-Object System.Drawing.Size(80, 20)
+    $script:JobTitleRadio.Checked = $true
+    $script:JobTitleRadio.Add_CheckedChanged({
+        if ($script:JobTitleRadio.Checked) {
+            $script:JobTitleComboBox.Enabled = $true
+            $script:DepartmentComboBox.Enabled = $false
+        }
+    })
+
+    $script:DepartmentRadio = New-Object System.Windows.Forms.RadioButton
+    $script:DepartmentRadio.Text = "Department"
+    $script:DepartmentRadio.Location = New-Object System.Drawing.Point(15, 55)
+    $script:DepartmentRadio.Size = New-Object System.Drawing.Size(85, 20)
+    $script:DepartmentRadio.Add_CheckedChanged({
+        if ($script:DepartmentRadio.Checked) {
+            $script:JobTitleComboBox.Enabled = $false
+            $script:DepartmentComboBox.Enabled = $true
+        }
+    })
 
     $script:JobTitleComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(100, 25)
-    $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(350, 23)
+    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(105, 23)
+    $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(345, 23)
     $script:JobTitleComboBox.DropDownStyle = "DropDown"
     $script:JobTitleComboBox.AutoCompleteMode = "SuggestAppend"
     $script:JobTitleComboBox.AutoCompleteSource = "ListItems"
 
-    $departmentLabel = New-Object System.Windows.Forms.Label
-    $departmentLabel.Text = "Department:"
-    $departmentLabel.Location = New-Object System.Drawing.Point(15, 60)
-    $departmentLabel.AutoSize = $true
-
     $script:DepartmentComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(100, 57)
-    $script:DepartmentComboBox.Size = New-Object System.Drawing.Size(350, 23)
+    $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(105, 53)
+    $script:DepartmentComboBox.Size = New-Object System.Drawing.Size(345, 23)
     $script:DepartmentComboBox.DropDownStyle = "DropDown"
     $script:DepartmentComboBox.AutoCompleteMode = "SuggestAppend"
     $script:DepartmentComboBox.AutoCompleteSource = "ListItems"
-
-    $officeLabel = New-Object System.Windows.Forms.Label
-    $officeLabel.Text = "Office:"
-    $officeLabel.Location = New-Object System.Drawing.Point(15, 92)
-    $officeLabel.AutoSize = $true
-
-    $script:OfficeComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:OfficeComboBox.Location = New-Object System.Drawing.Point(100, 89)
-    $script:OfficeComboBox.Size = New-Object System.Drawing.Size(350, 23)
-    $script:OfficeComboBox.DropDownStyle = "DropDown"
-    $script:OfficeComboBox.AutoCompleteMode = "SuggestAppend"
-    $script:OfficeComboBox.AutoCompleteSource = "ListItems"
+    $script:DepartmentComboBox.Enabled = $false
 
     $script:RefreshTitlesButton = New-Object System.Windows.Forms.Button
     $script:RefreshTitlesButton.Text = "Refresh"
-    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 55)
+    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 38)
     $script:RefreshTitlesButton.Size = New-Object System.Drawing.Size(100, 28)
     $script:RefreshTitlesButton.Add_Click({ Refresh-AllSelections })
 
-    $methodGroup.Controls.AddRange(@($jobTitleLabel, $script:JobTitleComboBox, $departmentLabel, $script:DepartmentComboBox, $officeLabel, $script:OfficeComboBox, $script:RefreshTitlesButton))
+    $methodGroup.Controls.AddRange(@($script:JobTitleRadio, $script:DepartmentRadio, $script:JobTitleComboBox, $script:DepartmentComboBox, $script:RefreshTitlesButton))
 
     # Target User Group
     $targetUserGroup = New-Object System.Windows.Forms.GroupBox
     $targetUserGroup.Text = "Target User"
-    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 305)
+    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 275)
     $targetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
@@ -1277,7 +1266,7 @@ function Build-MainForm {
     # Permission Level Group
     $permissionGroup = New-Object System.Windows.Forms.GroupBox
     $permissionGroup.Text = "Permission Level"
-    $permissionGroup.Location = New-Object System.Drawing.Point(15, 385)
+    $permissionGroup.Location = New-Object System.Drawing.Point(15, 355)
     $permissionGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $permissionLabel = New-Object System.Windows.Forms.Label
@@ -1317,7 +1306,7 @@ function Build-MainForm {
     # Actions Group
     $actionsGroup = New-Object System.Windows.Forms.GroupBox
     $actionsGroup.Text = "Bulk Actions"
-    $actionsGroup.Location = New-Object System.Drawing.Point(15, 465)
+    $actionsGroup.Location = New-Object System.Drawing.Point(15, 435)
     $actionsGroup.Size = New-Object System.Drawing.Size(655, 120)
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
@@ -1361,7 +1350,7 @@ function Build-MainForm {
     # Results Group
     $resultsGroup = New-Object System.Windows.Forms.GroupBox
     $resultsGroup.Text = "Results Log"
-    $resultsGroup.Location = New-Object System.Drawing.Point(15, 595)
+    $resultsGroup.Location = New-Object System.Drawing.Point(15, 565)
     $resultsGroup.Size = New-Object System.Drawing.Size(655, 140)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
