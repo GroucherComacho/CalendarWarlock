@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <!--
+    CalendarWarlock MSI Installer
+    WiX Toolset v3.x Source File
+
+    To build: Run Build-Installer.bat
+  -->
+
+  <Product Id="*"
+           Name="CalendarWarlock"
+           Language="1033"
+           Version="1.0.0.0"
+           Manufacturer="Groucher"
+           UpgradeCode="E8F4B2A1-5C3D-4E6F-9A8B-7C2D1E0F3A4B">
+
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="CalendarWarlock - Exchange Online Calendar Permission Management Tool"
+             Comments="Bulk manage Exchange Online calendar permissions with an intuitive GUI"
+             Manufacturer="Groucher" />
+
+    <!-- Single MSI file containing all files -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Upgrade handling - allows upgrades/downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- Windows version requirement (Windows 10+) -->
+    <Condition Message="This application requires Windows 10 or later.">
+      <![CDATA[Installed OR VersionNT >= 603]]>
+    </Condition>
+
+    <!-- ==================== Directory Structure ==================== -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+
+      <!-- Program Files installation -->
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="CalendarWarlock">
+          <Directory Id="SrcFolder" Name="src">
+            <Directory Id="ModulesFolder" Name="Modules" />
+          </Directory>
+          <Directory Id="DocsFolder" Name="docs" />
+        </Directory>
+      </Directory>
+
+      <!-- Start Menu shortcuts -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="CalendarWarlock" />
+      </Directory>
+
+      <!-- Desktop shortcut -->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+
+    </Directory>
+
+    <!-- ==================== Components (Files) ==================== -->
+
+    <!-- Main launcher files -->
+    <ComponentGroup Id="MainComponents" Directory="INSTALLFOLDER">
+
+      <Component Id="CalendarWarlockBat" Guid="A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D">
+        <File Id="CalendarWarlockBat" Source="..\CalendarWarlock.bat" KeyPath="yes" />
+      </Component>
+
+      <Component Id="StartCalendarWarlockPs1" Guid="B2C3D4E5-F6A7-5B6C-9D0E-1F2A3B4C5D6E">
+        <File Id="StartCalendarWarlockPs1" Source="..\Start-CalendarWarlock.ps1" KeyPath="yes" />
+      </Component>
+
+      <Component Id="ReadmeMd" Guid="C3D4E5F6-A7B8-6C7D-0E1F-2A3B4C5D6E7F">
+        <File Id="ReadmeMd" Source="..\README.md" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Source files -->
+    <ComponentGroup Id="SrcComponents" Directory="SrcFolder">
+
+      <Component Id="CalendarWarlockPs1" Guid="D4E5F6A7-B8C9-7D8E-1F2A-3B4C5D6E7F8A">
+        <File Id="CalendarWarlockPs1" Source="..\src\CalendarWarlock.ps1" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Module files -->
+    <ComponentGroup Id="ModuleComponents" Directory="ModulesFolder">
+
+      <Component Id="ExchangeOperationsPsm1" Guid="E5F6A7B8-C9D0-8E9F-2A3B-4C5D6E7F8A9B">
+        <File Id="ExchangeOperationsPsm1" Source="..\src\Modules\ExchangeOperations.psm1" KeyPath="yes" />
+      </Component>
+
+      <Component Id="AzureADOperationsPsm1" Guid="F6A7B8C9-D0E1-9F0A-3B4C-5D6E7F8A9B0C">
+        <File Id="AzureADOperationsPsm1" Source="..\src\Modules\AzureADOperations.psm1" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Documentation files -->
+    <ComponentGroup Id="DocsComponents" Directory="DocsFolder">
+
+      <Component Id="UsageMd" Guid="A7B8C9D0-E1F2-0A1B-4C5D-6E7F8A9B0C1D">
+        <File Id="UsageMd" Source="..\docs\USAGE.md" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- ==================== Shortcuts ==================== -->
+
+    <!-- Start Menu Shortcuts -->
+    <ComponentGroup Id="StartMenuShortcuts" Directory="ApplicationProgramsFolder">
+
+      <Component Id="StartMenuShortcut" Guid="B8C9D0E1-F2A3-1B2C-5D6E-7F8A9B0C1D2E">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="CalendarWarlock"
+                  Description="Exchange Online Calendar Permission Management Tool"
+                  Target="[INSTALLFOLDER]CalendarWarlock.bat"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="CalendarIcon" />
+        <RemoveFolder Id="CleanUpStartMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Groucher\CalendarWarlock"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- Desktop Shortcut (Optional Feature) -->
+    <ComponentGroup Id="DesktopShortcuts" Directory="DesktopFolder">
+
+      <Component Id="DesktopShortcut" Guid="C9D0E1F2-A3B4-2C3D-6E7F-8A9B0C1D2E3F">
+        <Shortcut Id="DesktopShortcut"
+                  Name="CalendarWarlock"
+                  Description="Exchange Online Calendar Permission Management Tool"
+                  Target="[INSTALLFOLDER]CalendarWarlock.bat"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="CalendarIcon" />
+        <RegistryValue Root="HKCU" Key="Software\Groucher\CalendarWarlock"
+                       Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+
+    <!-- ==================== Icon ==================== -->
+    <!-- Using a generic icon - you can replace with a custom .ico file -->
+    <Icon Id="CalendarIcon" SourceFile="..\CalendarWarlock.bat" />
+
+    <!-- ==================== Features ==================== -->
+    <Feature Id="ProductFeature" Title="CalendarWarlock" Level="1"
+             Description="CalendarWarlock application files">
+      <ComponentGroupRef Id="MainComponents" />
+      <ComponentGroupRef Id="SrcComponents" />
+      <ComponentGroupRef Id="ModuleComponents" />
+      <ComponentGroupRef Id="DocsComponents" />
+      <ComponentGroupRef Id="StartMenuShortcuts" />
+    </Feature>
+
+    <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1"
+             Description="Create a shortcut on the Desktop">
+      <ComponentGroupRef Id="DesktopShortcuts" />
+    </Feature>
+
+    <!-- ==================== UI ==================== -->
+    <!-- Minimal UI - just progress bar -->
+    <UIRef Id="WixUI_Minimal" />
+
+    <!-- License (optional - comment out if no license file) -->
+    <!-- <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" /> -->
+
+  </Product>
+</Wix>

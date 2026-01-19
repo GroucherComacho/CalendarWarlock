@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wix --version:*)",
+      "Bash(dotnet tool:*)",
+      "Bash(cmd /c \"wix --version\")",
+      "Bash(cmd /c \"dotnet tool list -g\")",
+      "Bash(powershell -Command \"dotnet tool list -g\")",
+      "Bash(powershell -Command \"Get-Command wix -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Program Files*\\\\WiX*'' -ErrorAction SilentlyContinue | Select-Object FullName\")",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c \"Build-Installer.bat\")"
+    ]
+  }
+}
