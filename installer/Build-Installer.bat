@@ -13,7 +13,7 @@ echo ========================================
 echo.
 
 REM Set WiX path
-set WIX_PATH=C:\Program Files (x86)\WiX Toolset v3.14\bin
+set "WIX_PATH=C:\Program Files (x86)\WiX Toolset v3.14\bin"
 
 REM Verify WiX is installed
 if not exist "%WIX_PATH%\candle.exe" (
