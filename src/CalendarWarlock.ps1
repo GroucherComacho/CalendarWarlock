@@ -31,20 +31,20 @@ Add-Type -AssemblyName System.Drawing
 # Theme Configurations
 $script:Themes = @{
     Dark = @{
-        FormBackground = [System.Drawing.Color]::FromArgb(26, 20, 16)
-        CardBackground = [System.Drawing.Color]::FromArgb(42, 32, 24)
-        HeaderBackground = [System.Drawing.Color]::FromArgb(212, 168, 67)
-        HeaderText = [System.Drawing.Color]::FromArgb(26, 20, 16)
-        PrimaryText = [System.Drawing.Color]::FromArgb(240, 232, 220)
-        SecondaryText = [System.Drawing.Color]::FromArgb(138, 130, 120)
-        PrimaryButton = [System.Drawing.Color]::FromArgb(232, 168, 32)
-        SecondaryButton = [System.Drawing.Color]::FromArgb(212, 168, 67)
-        DisabledButton = [System.Drawing.Color]::FromArgb(138, 130, 120)
-        RemoveButton = [System.Drawing.Color]::FromArgb(58, 48, 40)
-        ButtonText = [System.Drawing.Color]::FromArgb(26, 20, 16)
-        ButtonTextLight = [System.Drawing.Color]::FromArgb(240, 232, 220)
-        ResultsBackground = [System.Drawing.Color]::FromArgb(26, 20, 16)
-        ResultsText = [System.Drawing.Color]::FromArgb(212, 168, 67)
+        FormBackground = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        CardBackground = [System.Drawing.Color]::FromArgb(30, 30, 46)
+        HeaderBackground = [System.Drawing.Color]::FromArgb(137, 180, 250)
+        HeaderText = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        PrimaryText = [System.Drawing.Color]::FromArgb(205, 214, 244)
+        SecondaryText = [System.Drawing.Color]::FromArgb(147, 153, 178)
+        PrimaryButton = [System.Drawing.Color]::FromArgb(137, 180, 250)
+        SecondaryButton = [System.Drawing.Color]::FromArgb(180, 190, 254)
+        DisabledButton = [System.Drawing.Color]::FromArgb(88, 91, 112)
+        RemoveButton = [System.Drawing.Color]::FromArgb(45, 45, 60)
+        ButtonText = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(205, 214, 244)
+        ResultsBackground = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        ResultsText = [System.Drawing.Color]::FromArgb(148, 226, 213)
         ToggleText = "Light"
     }
     Light = @{
