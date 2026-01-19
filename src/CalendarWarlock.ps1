@@ -2130,7 +2130,7 @@ function Build-MainForm {
     $script:DepartmentRadio = New-Object System.Windows.Forms.RadioButton
     $script:DepartmentRadio.Text = "Dept."
     $script:DepartmentRadio.Location = New-Object System.Drawing.Point(15, 85)
-    $script:DepartmentRadio.Size = New-Object System.Drawing.Size(100, 20)
+    $script:DepartmentRadio.Size = New-Object System.Drawing.Size(80, 20)
     $script:DepartmentRadio.Add_CheckedChanged({
         Update-MethodSelectionUI
     })
