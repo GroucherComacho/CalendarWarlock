@@ -2021,6 +2021,12 @@ function Build-MainForm {
     $script:MainForm.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:MainForm.BackColor = $script:Themes[$script:CurrentTheme].FormBackground
 
+    # Set application icon
+    $iconPath = Join-Path (Split-Path -Parent $script:ScriptPath) "icon.ico"
+    if (Test-Path $iconPath) {
+        $script:MainForm.Icon = New-Object System.Drawing.Icon($iconPath)
+    }
+
     # Header Panel
     $script:HeaderPanel = New-Object System.Windows.Forms.Panel
     $script:HeaderPanel.Location = New-Object System.Drawing.Point(0, 0)
