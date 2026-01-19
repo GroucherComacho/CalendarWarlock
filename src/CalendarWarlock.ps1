@@ -21,6 +21,7 @@ $ErrorActionPreference = "Stop"
 $script:ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:LogPath = Join-Path $script:ScriptPath "Logs"
 $script:IsConnected = $false
+$script:CSVFilePath = $null
 #endregion
 
 #region Load Required Assemblies and Modules
@@ -143,11 +144,17 @@ function Set-UIEnabled {
     $controls = @(
         $script:ConnectButton,
         $script:OrganizationTextBox,
+        $script:SingleRadio,
         $script:JobTitleRadio,
         $script:DepartmentRadio,
+        $script:BulkCSVRadio,
+        $script:SingleCalendarOwnerTextBox,
+        $script:SingleUserTextBox,
         $script:JobTitleComboBox,
         $script:DepartmentComboBox,
         $script:RefreshTitlesButton,
+        $script:BrowseCSVButton,
+        $script:DownloadTemplateButton,
         $script:TargetUserTextBox,
         $script:SearchUserButton,
         $script:GetPermissionsButton,
@@ -164,10 +171,65 @@ function Set-UIEnabled {
         }
     }
 
-    # When enabling, respect the radio button state for combo boxes
+    # When enabling, respect the radio button state for controls
     if ($Enabled) {
-        $script:JobTitleComboBox.Enabled = $script:JobTitleRadio.Checked
-        $script:DepartmentComboBox.Enabled = $script:DepartmentRadio.Checked
+        Update-MethodSelectionUI
+    }
+}
+
+function Update-MethodSelectionUI {
+    <#
+    .SYNOPSIS
+        Updates the UI based on the selected method radio button
+    #>
+
+    # Single mode
+    $singleEnabled = $script:SingleRadio.Checked
+    if ($script:SingleCalendarOwnerTextBox) { $script:SingleCalendarOwnerTextBox.Enabled = $singleEnabled }
+    if ($script:SingleUserTextBox) { $script:SingleUserTextBox.Enabled = $singleEnabled }
+    if ($script:SingleCalendarOwnerLabel) { $script:SingleCalendarOwnerLabel.Enabled = $singleEnabled }
+    if ($script:SingleUserLabel) { $script:SingleUserLabel.Enabled = $singleEnabled }
+
+    # Job Title mode
+    $jobTitleEnabled = $script:JobTitleRadio.Checked
+    if ($script:JobTitleComboBox) { $script:JobTitleComboBox.Enabled = $jobTitleEnabled }
+
+    # Department mode
+    $departmentEnabled = $script:DepartmentRadio.Checked
+    if ($script:DepartmentComboBox) { $script:DepartmentComboBox.Enabled = $departmentEnabled }
+
+    # Bulk CSV mode
+    $csvEnabled = $script:BulkCSVRadio.Checked
+    if ($script:BrowseCSVButton) { $script:BrowseCSVButton.Enabled = $csvEnabled }
+    if ($script:DownloadTemplateButton) { $script:DownloadTemplateButton.Enabled = $csvEnabled }
+    if ($script:CSVFileLabel) { $script:CSVFileLabel.Enabled = $csvEnabled }
+
+    # Target User section visibility based on mode
+    $showTargetUser = $script:JobTitleRadio.Checked -or $script:DepartmentRadio.Checked
+    if ($script:TargetUserTextBox) { $script:TargetUserTextBox.Enabled = $showTargetUser }
+    if ($script:SearchUserButton) { $script:SearchUserButton.Enabled = $showTargetUser }
+    if ($script:GetPermissionsButton) { $script:GetPermissionsButton.Enabled = $showTargetUser }
+
+    # Update button labels based on mode
+    if ($script:GrantToUserButton -and $script:GrantToTitleButton -and $script:RemoveFromUserButton -and $script:RemoveFromTitleButton) {
+        if ($script:SingleRadio.Checked) {
+            $script:GrantToUserButton.Text = "Grant Permission"
+            $script:GrantToTitleButton.Text = "Grant Permission"
+            $script:RemoveFromUserButton.Text = "Remove Permission"
+            $script:RemoveFromTitleButton.Text = "Remove Permission"
+        }
+        elseif ($script:BulkCSVRadio.Checked) {
+            $script:GrantToUserButton.Text = "Grant Permissions from CSV"
+            $script:GrantToTitleButton.Text = "Grant Permissions from CSV"
+            $script:RemoveFromUserButton.Text = "Remove Permissions from CSV"
+            $script:RemoveFromTitleButton.Text = "Remove Permissions from CSV"
+        }
+        else {
+            $script:GrantToUserButton.Text = "Grant User Access to All Calendars of Selection"
+            $script:GrantToTitleButton.Text = "Grant All of Selection Access to User's Calendar"
+            $script:RemoveFromUserButton.Text = "Remove User Access from All Calendars of Selection"
+            $script:RemoveFromTitleButton.Text = "Remove All of Selection Access from User's Calendar"
+        }
     }
 }
 #endregion
@@ -1101,6 +1163,486 @@ function Remove-BulkPermissionsFromTitle {
         Update-ProgressBar -Value 0
     }
 }
+
+function Grant-SinglePermission {
+    <#
+    .SYNOPSIS
+        Grants a single user access to a single calendar
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $calendarOwner = $script:SingleCalendarOwnerTextBox.Text.Trim()
+    $targetUser = $script:SingleUserTextBox.Text.Trim()
+    $permission = $script:PermissionComboBox.SelectedItem
+
+    if ([string]::IsNullOrEmpty($calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter the calendar owner's email.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if ([string]::IsNullOrEmpty($targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter the user email to grant access to.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if ($calendarOwner -eq $targetUser) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Calendar owner and target user cannot be the same.",
+            "Invalid Input",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    Clear-ResultsLog
+    Update-ResultsLog "Granting single calendar permission..." "Info"
+    Update-ResultsLog "Calendar Owner: $calendarOwner" "Info"
+    Update-ResultsLog "User: $targetUser" "Info"
+    Update-ResultsLog "Permission: $permission" "Info"
+    Write-Log "Grant-SinglePermission: Owner=$calendarOwner, User=$targetUser, Permission=$permission" "INFO"
+
+    Set-UIEnabled -Enabled $false
+
+    try {
+        $result = Grant-CalendarPermission -CalendarOwner $calendarOwner -Trustee $targetUser -AccessRights $permission
+
+        if ($result.Success) {
+            Update-ResultsLog "$($result.Action): $targetUser now has $permission access to $calendarOwner's calendar" "Success"
+            Write-Log "Single permission grant completed successfully" "SUCCESS"
+
+            [System.Windows.Forms.MessageBox]::Show(
+                "$($result.Action)!`n`n$targetUser now has $permission access to $calendarOwner's calendar.",
+                "Operation Complete",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Information
+            )
+        }
+        else {
+            Update-ResultsLog "Failed: $($result.Message)" "Error"
+            Write-Log "Single permission grant failed: $($result.Message)" "ERROR"
+
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to grant permission: $($result.Message)",
+                "Error",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+        }
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+    }
+}
+
+function Remove-SinglePermission {
+    <#
+    .SYNOPSIS
+        Removes a single user's access from a single calendar
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    $calendarOwner = $script:SingleCalendarOwnerTextBox.Text.Trim()
+    $targetUser = $script:SingleUserTextBox.Text.Trim()
+
+    if ([string]::IsNullOrEmpty($calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter the calendar owner's email.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if ([string]::IsNullOrEmpty($targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter the user email to remove access from.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Confirmation dialog
+    $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+        "This will REMOVE $targetUser's access from $calendarOwner's calendar.`n`nAre you sure you want to continue?",
+        "Confirm Permission Removal",
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+    )
+
+    if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+        return
+    }
+
+    Clear-ResultsLog
+    Update-ResultsLog "Removing single calendar permission..." "Info"
+    Update-ResultsLog "Calendar Owner: $calendarOwner" "Info"
+    Update-ResultsLog "User: $targetUser" "Info"
+    Write-Log "Remove-SinglePermission: Owner=$calendarOwner, User=$targetUser" "INFO"
+
+    Set-UIEnabled -Enabled $false
+
+    try {
+        $result = Remove-CalendarPermission -CalendarOwner $calendarOwner -Trustee $targetUser
+
+        if ($result.Success) {
+            Update-ResultsLog "Removed: $targetUser's access from $calendarOwner's calendar" "Success"
+            Write-Log "Single permission removal completed successfully" "SUCCESS"
+
+            [System.Windows.Forms.MessageBox]::Show(
+                "Permission removed!`n`n$targetUser no longer has access to $calendarOwner's calendar.",
+                "Operation Complete",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Information
+            )
+        }
+        else {
+            Update-ResultsLog "Failed: $($result.Message)" "Error"
+            Write-Log "Single permission removal failed: $($result.Message)" "ERROR"
+
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to remove permission: $($result.Message)",
+                "Error",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+        }
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+    }
+}
+
+function Grant-BulkCSVPermissions {
+    <#
+    .SYNOPSIS
+        Grants calendar permissions based on a CSV file
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if ([string]::IsNullOrEmpty($script:CSVFilePath) -or -not (Test-Path $script:CSVFilePath)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a valid CSV file.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    try {
+        $csvData = Import-Csv -Path $script:CSVFilePath
+
+        # Validate CSV structure
+        $requiredColumns = @("MailboxEmail", "UserEmail", "AccessLevel")
+        $missingColumns = $requiredColumns | Where-Object { $_ -notin $csvData[0].PSObject.Properties.Name }
+
+        if ($missingColumns.Count -gt 0) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is missing required columns: $($missingColumns -join ', ')`n`nRequired columns: MailboxEmail, UserEmail, AccessLevel",
+                "Invalid CSV Format",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
+        if ($csvData.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file contains no data rows.",
+                "Empty CSV",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
+
+        # Confirmation dialog
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "This will process $($csvData.Count) permission grant(s) from the CSV file.`n`nAre you sure you want to continue?",
+            "Confirm Bulk CSV Grant",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question
+        )
+
+        if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+            return
+        }
+
+        Clear-ResultsLog
+        Update-ResultsLog "Starting bulk CSV permission grant..." "Info"
+        Update-ResultsLog "Processing $($csvData.Count) entries from CSV" "Info"
+        Write-Log "Grant-BulkCSVPermissions: Processing $($csvData.Count) entries from $($script:CSVFilePath)" "INFO"
+
+        Set-UIEnabled -Enabled $false
+
+        $successCount = 0
+        $failCount = 0
+        $skipCount = 0
+
+        Update-ProgressBar -Value 0 -Maximum $csvData.Count
+
+        for ($i = 0; $i -lt $csvData.Count; $i++) {
+            $entry = $csvData[$i]
+            $calendarOwner = $entry.MailboxEmail.Trim()
+            $targetUser = $entry.UserEmail.Trim()
+            $permission = $entry.AccessLevel.Trim()
+
+            if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser) -or [string]::IsNullOrEmpty($permission)) {
+                Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            if ($calendarOwner -eq $targetUser) {
+                Update-ResultsLog "Skipping row $($i + 1): Same user for owner and target" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            Update-ResultsLog "Granting $targetUser $permission access to $calendarOwner's calendar..." "Info"
+
+            $result = Grant-CalendarPermission -CalendarOwner $calendarOwner -Trustee $targetUser -AccessRights $permission
+
+            if ($result.Success) {
+                Update-ResultsLog "$($result.Action): $targetUser -> $calendarOwner ($permission)" "Success"
+                $successCount++
+            }
+            else {
+                Update-ResultsLog "Failed: $targetUser -> $calendarOwner - $($result.Message)" "Error"
+                $failCount++
+            }
+
+            Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+        }
+
+        Update-ResultsLog "-----------------------------------" "Info"
+        Update-ResultsLog "Bulk CSV operation completed!" "Success"
+        Update-ResultsLog "Success: $successCount | Failed: $failCount | Skipped: $skipCount" "Info"
+        Write-Log "Bulk CSV grant completed: Success=$successCount, Failed=$failCount, Skipped=$skipCount" "SUCCESS"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Bulk CSV permission grant completed!`n`nSuccess: $successCount`nFailed: $failCount`nSkipped: $skipCount",
+            "Operation Complete",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+        Update-ProgressBar -Value 0
+    }
+}
+
+function Remove-BulkCSVPermissions {
+    <#
+    .SYNOPSIS
+        Removes calendar permissions based on a CSV file
+    #>
+
+    if (-not $script:IsConnected) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please connect to Exchange Online first.",
+            "Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if ([string]::IsNullOrEmpty($script:CSVFilePath) -or -not (Test-Path $script:CSVFilePath)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please select a valid CSV file.",
+            "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    try {
+        $csvData = Import-Csv -Path $script:CSVFilePath
+
+        # Validate CSV structure (only need MailboxEmail and UserEmail for removal)
+        $requiredColumns = @("MailboxEmail", "UserEmail")
+        $missingColumns = $requiredColumns | Where-Object { $_ -notin $csvData[0].PSObject.Properties.Name }
+
+        if ($missingColumns.Count -gt 0) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is missing required columns: $($missingColumns -join ', ')`n`nRequired columns: MailboxEmail, UserEmail",
+                "Invalid CSV Format",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
+        if ($csvData.Count -eq 0) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file contains no data rows.",
+                "Empty CSV",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return
+        }
+
+        # Confirmation dialog
+        $confirmResult = [System.Windows.Forms.MessageBox]::Show(
+            "This will REMOVE $($csvData.Count) permission(s) based on the CSV file.`n`nAre you sure you want to continue?",
+            "Confirm Bulk CSV Removal",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+
+        if ($confirmResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+            return
+        }
+
+        Clear-ResultsLog
+        Update-ResultsLog "Starting bulk CSV permission removal..." "Info"
+        Update-ResultsLog "Processing $($csvData.Count) entries from CSV" "Info"
+        Write-Log "Remove-BulkCSVPermissions: Processing $($csvData.Count) entries from $($script:CSVFilePath)" "INFO"
+
+        Set-UIEnabled -Enabled $false
+
+        $successCount = 0
+        $failCount = 0
+        $skipCount = 0
+
+        Update-ProgressBar -Value 0 -Maximum $csvData.Count
+
+        for ($i = 0; $i -lt $csvData.Count; $i++) {
+            $entry = $csvData[$i]
+            $calendarOwner = $entry.MailboxEmail.Trim()
+            $targetUser = $entry.UserEmail.Trim()
+
+            if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser)) {
+                Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            Update-ResultsLog "Removing $targetUser's access from $calendarOwner's calendar..." "Info"
+
+            $result = Remove-CalendarPermission -CalendarOwner $calendarOwner -Trustee $targetUser
+
+            if ($result.Success) {
+                Update-ResultsLog "Removed: $targetUser from $calendarOwner" "Success"
+                $successCount++
+            }
+            else {
+                Update-ResultsLog "Failed: $targetUser from $calendarOwner - $($result.Message)" "Error"
+                $failCount++
+            }
+
+            Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+        }
+
+        Update-ResultsLog "-----------------------------------" "Info"
+        Update-ResultsLog "Bulk CSV removal completed!" "Success"
+        Update-ResultsLog "Success: $successCount | Failed: $failCount | Skipped: $skipCount" "Info"
+        Write-Log "Bulk CSV removal completed: Success=$successCount, Failed=$failCount, Skipped=$skipCount" "SUCCESS"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Bulk CSV permission removal completed!`n`nSuccess: $successCount`nFailed: $failCount`nSkipped: $skipCount",
+            "Operation Complete",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
+    }
+    catch {
+        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Operation failed: $($_.Exception.Message)",
+            "Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    }
+    finally {
+        Set-UIEnabled -Enabled $true
+        Update-ProgressBar -Value 0
+    }
+}
 #endregion
 
 #region Build Main Form
@@ -1108,7 +1650,7 @@ function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
     $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
-    $script:MainForm.Size = New-Object System.Drawing.Size(700, 790)
+    $script:MainForm.Size = New-Object System.Drawing.Size(700, 850)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
@@ -1184,41 +1726,76 @@ function Build-MainForm {
     $methodGroup = New-Object System.Windows.Forms.GroupBox
     $methodGroup.Text = "Method Selection"
     $methodGroup.Location = New-Object System.Drawing.Point(15, 165)
-    $methodGroup.Size = New-Object System.Drawing.Size(655, 100)
+    $methodGroup.Size = New-Object System.Drawing.Size(655, 160)
 
     # Radio buttons for method selection
+    $script:SingleRadio = New-Object System.Windows.Forms.RadioButton
+    $script:SingleRadio.Text = "Single"
+    $script:SingleRadio.Location = New-Object System.Drawing.Point(15, 25)
+    $script:SingleRadio.Size = New-Object System.Drawing.Size(80, 20)
+    $script:SingleRadio.Checked = $true
+    $script:SingleRadio.Add_CheckedChanged({
+        Update-MethodSelectionUI
+    })
+
     $script:JobTitleRadio = New-Object System.Windows.Forms.RadioButton
     $script:JobTitleRadio.Text = "Job Title"
-    $script:JobTitleRadio.Location = New-Object System.Drawing.Point(15, 25)
+    $script:JobTitleRadio.Location = New-Object System.Drawing.Point(15, 55)
     $script:JobTitleRadio.Size = New-Object System.Drawing.Size(80, 20)
-    $script:JobTitleRadio.Checked = $true
     $script:JobTitleRadio.Add_CheckedChanged({
-        if ($script:JobTitleRadio.Checked) {
-            $script:JobTitleComboBox.Enabled = $true
-            $script:DepartmentComboBox.Enabled = $false
-        }
+        Update-MethodSelectionUI
     })
 
     $script:DepartmentRadio = New-Object System.Windows.Forms.RadioButton
     $script:DepartmentRadio.Text = "Department"
-    $script:DepartmentRadio.Location = New-Object System.Drawing.Point(15, 55)
-    $script:DepartmentRadio.Size = New-Object System.Drawing.Size(85, 20)
+    $script:DepartmentRadio.Location = New-Object System.Drawing.Point(15, 85)
+    $script:DepartmentRadio.Size = New-Object System.Drawing.Size(100, 20)
     $script:DepartmentRadio.Add_CheckedChanged({
-        if ($script:DepartmentRadio.Checked) {
-            $script:JobTitleComboBox.Enabled = $false
-            $script:DepartmentComboBox.Enabled = $true
-        }
+        Update-MethodSelectionUI
     })
 
+    $script:BulkCSVRadio = New-Object System.Windows.Forms.RadioButton
+    $script:BulkCSVRadio.Text = "Bulk CSV"
+    $script:BulkCSVRadio.Location = New-Object System.Drawing.Point(15, 115)
+    $script:BulkCSVRadio.Size = New-Object System.Drawing.Size(80, 20)
+    $script:BulkCSVRadio.Add_CheckedChanged({
+        Update-MethodSelectionUI
+    })
+
+    # Single mode controls - Calendar Owner Email
+    $script:SingleCalendarOwnerLabel = New-Object System.Windows.Forms.Label
+    $script:SingleCalendarOwnerLabel.Text = "Calendar Owner:"
+    $script:SingleCalendarOwnerLabel.Location = New-Object System.Drawing.Point(105, 25)
+    $script:SingleCalendarOwnerLabel.Size = New-Object System.Drawing.Size(100, 20)
+
+    $script:SingleCalendarOwnerTextBox = New-Object System.Windows.Forms.TextBox
+    $script:SingleCalendarOwnerTextBox.Location = New-Object System.Drawing.Point(210, 23)
+    $script:SingleCalendarOwnerTextBox.Size = New-Object System.Drawing.Size(240, 23)
+    try { $script:SingleCalendarOwnerTextBox.PlaceholderText = "owner@contoso.com" } catch {}
+
+    # Single mode controls - User Email
+    $script:SingleUserLabel = New-Object System.Windows.Forms.Label
+    $script:SingleUserLabel.Text = "User Email:"
+    $script:SingleUserLabel.Location = New-Object System.Drawing.Point(470, 25)
+    $script:SingleUserLabel.Size = New-Object System.Drawing.Size(70, 20)
+
+    $script:SingleUserTextBox = New-Object System.Windows.Forms.TextBox
+    $script:SingleUserTextBox.Location = New-Object System.Drawing.Point(545, 23)
+    $script:SingleUserTextBox.Size = New-Object System.Drawing.Size(95, 23)
+    try { $script:SingleUserTextBox.PlaceholderText = "user@contoso.com" } catch {}
+
+    # Job Title controls
     $script:JobTitleComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(105, 23)
+    $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(105, 53)
     $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(345, 23)
     $script:JobTitleComboBox.DropDownStyle = "DropDown"
     $script:JobTitleComboBox.AutoCompleteMode = "SuggestAppend"
     $script:JobTitleComboBox.AutoCompleteSource = "ListItems"
+    $script:JobTitleComboBox.Enabled = $false
 
+    # Department controls
     $script:DepartmentComboBox = New-Object System.Windows.Forms.ComboBox
-    $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(105, 53)
+    $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(105, 83)
     $script:DepartmentComboBox.Size = New-Object System.Drawing.Size(345, 23)
     $script:DepartmentComboBox.DropDownStyle = "DropDown"
     $script:DepartmentComboBox.AutoCompleteMode = "SuggestAppend"
@@ -1227,16 +1804,62 @@ function Build-MainForm {
 
     $script:RefreshTitlesButton = New-Object System.Windows.Forms.Button
     $script:RefreshTitlesButton.Text = "Refresh"
-    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 38)
+    $script:RefreshTitlesButton.Location = New-Object System.Drawing.Point(470, 68)
     $script:RefreshTitlesButton.Size = New-Object System.Drawing.Size(100, 28)
     $script:RefreshTitlesButton.Add_Click({ Refresh-AllSelections })
 
-    $methodGroup.Controls.AddRange(@($script:JobTitleRadio, $script:DepartmentRadio, $script:JobTitleComboBox, $script:DepartmentComboBox, $script:RefreshTitlesButton))
+    # Bulk CSV controls
+    $script:CSVFileLabel = New-Object System.Windows.Forms.Label
+    $script:CSVFileLabel.Text = "No file selected"
+    $script:CSVFileLabel.Location = New-Object System.Drawing.Point(105, 117)
+    $script:CSVFileLabel.Size = New-Object System.Drawing.Size(240, 20)
+    $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::Gray
+    $script:CSVFileLabel.Enabled = $false
+
+    $script:BrowseCSVButton = New-Object System.Windows.Forms.Button
+    $script:BrowseCSVButton.Text = "Browse..."
+    $script:BrowseCSVButton.Location = New-Object System.Drawing.Point(355, 113)
+    $script:BrowseCSVButton.Size = New-Object System.Drawing.Size(80, 25)
+    $script:BrowseCSVButton.Enabled = $false
+    $script:BrowseCSVButton.Add_Click({
+        $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+        $openFileDialog.Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*"
+        $openFileDialog.Title = "Select CSV File"
+        if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $script:CSVFilePath = $openFileDialog.FileName
+            $script:CSVFileLabel.Text = [System.IO.Path]::GetFileName($script:CSVFilePath)
+            $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::Black
+        }
+    })
+
+    $script:DownloadTemplateButton = New-Object System.Windows.Forms.Button
+    $script:DownloadTemplateButton.Text = "Download Template"
+    $script:DownloadTemplateButton.Location = New-Object System.Drawing.Point(445, 113)
+    $script:DownloadTemplateButton.Size = New-Object System.Drawing.Size(125, 25)
+    $script:DownloadTemplateButton.Enabled = $false
+    $script:DownloadTemplateButton.Add_Click({
+        $saveFileDialog = New-Object System.Windows.Forms.SaveFileDialog
+        $saveFileDialog.Filter = "CSV Files (*.csv)|*.csv"
+        $saveFileDialog.FileName = "bulktemplate.csv"
+        $saveFileDialog.Title = "Save CSV Template"
+        if ($saveFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $templateContent = "MailboxEmail,UserEmail,AccessLevel`r`nuser1@domain.com,assistant1@domain.com,Editor`r`nuser2@domain.com,assistant2@domain.com,Reviewer"
+            [System.IO.File]::WriteAllText($saveFileDialog.FileName, $templateContent)
+            Update-ResultsLog "Template saved to: $($saveFileDialog.FileName)" "Success"
+        }
+    })
+
+    $methodGroup.Controls.AddRange(@(
+        $script:SingleRadio, $script:JobTitleRadio, $script:DepartmentRadio, $script:BulkCSVRadio,
+        $script:SingleCalendarOwnerLabel, $script:SingleCalendarOwnerTextBox, $script:SingleUserLabel, $script:SingleUserTextBox,
+        $script:JobTitleComboBox, $script:DepartmentComboBox, $script:RefreshTitlesButton,
+        $script:CSVFileLabel, $script:BrowseCSVButton, $script:DownloadTemplateButton
+    ))
 
     # Target User Group
     $targetUserGroup = New-Object System.Windows.Forms.GroupBox
     $targetUserGroup.Text = "Target User"
-    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 275)
+    $targetUserGroup.Location = New-Object System.Drawing.Point(15, 335)
     $targetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
@@ -1266,7 +1889,7 @@ function Build-MainForm {
     # Permission Level Group
     $permissionGroup = New-Object System.Windows.Forms.GroupBox
     $permissionGroup.Text = "Permission Level"
-    $permissionGroup.Location = New-Object System.Drawing.Point(15, 355)
+    $permissionGroup.Location = New-Object System.Drawing.Point(15, 415)
     $permissionGroup.Size = New-Object System.Drawing.Size(655, 70)
 
     $permissionLabel = New-Object System.Windows.Forms.Label
@@ -1305,8 +1928,8 @@ function Build-MainForm {
 
     # Actions Group
     $actionsGroup = New-Object System.Windows.Forms.GroupBox
-    $actionsGroup.Text = "Bulk Actions"
-    $actionsGroup.Location = New-Object System.Drawing.Point(15, 435)
+    $actionsGroup.Text = "Actions"
+    $actionsGroup.Location = New-Object System.Drawing.Point(15, 495)
     $actionsGroup.Size = New-Object System.Drawing.Size(655, 120)
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
@@ -1316,7 +1939,17 @@ function Build-MainForm {
     $script:GrantToUserButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 0)
     $script:GrantToUserButton.ForeColor = [System.Drawing.Color]::White
     $script:GrantToUserButton.FlatStyle = "Flat"
-    $script:GrantToUserButton.Add_Click({ Grant-BulkPermissionsToUser })
+    $script:GrantToUserButton.Add_Click({
+        if ($script:SingleRadio.Checked) {
+            Grant-SinglePermission
+        }
+        elseif ($script:BulkCSVRadio.Checked) {
+            Grant-BulkCSVPermissions
+        }
+        else {
+            Grant-BulkPermissionsToUser
+        }
+    })
 
     $script:GrantToTitleButton = New-Object System.Windows.Forms.Button
     $script:GrantToTitleButton.Text = "Grant All of Selection Access to User's Calendar"
@@ -1325,7 +1958,17 @@ function Build-MainForm {
     $script:GrantToTitleButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
     $script:GrantToTitleButton.ForeColor = [System.Drawing.Color]::White
     $script:GrantToTitleButton.FlatStyle = "Flat"
-    $script:GrantToTitleButton.Add_Click({ Grant-BulkPermissionsToTitle })
+    $script:GrantToTitleButton.Add_Click({
+        if ($script:SingleRadio.Checked) {
+            Grant-SinglePermission
+        }
+        elseif ($script:BulkCSVRadio.Checked) {
+            Grant-BulkCSVPermissions
+        }
+        else {
+            Grant-BulkPermissionsToTitle
+        }
+    })
 
     $script:RemoveFromUserButton = New-Object System.Windows.Forms.Button
     $script:RemoveFromUserButton.Text = "Remove User Access from All Calendars of Selection"
@@ -1334,7 +1977,17 @@ function Build-MainForm {
     $script:RemoveFromUserButton.BackColor = [System.Drawing.Color]::FromArgb(180, 50, 50)
     $script:RemoveFromUserButton.ForeColor = [System.Drawing.Color]::White
     $script:RemoveFromUserButton.FlatStyle = "Flat"
-    $script:RemoveFromUserButton.Add_Click({ Remove-BulkPermissionsFromUser })
+    $script:RemoveFromUserButton.Add_Click({
+        if ($script:SingleRadio.Checked) {
+            Remove-SinglePermission
+        }
+        elseif ($script:BulkCSVRadio.Checked) {
+            Remove-BulkCSVPermissions
+        }
+        else {
+            Remove-BulkPermissionsFromUser
+        }
+    })
 
     $script:RemoveFromTitleButton = New-Object System.Windows.Forms.Button
     $script:RemoveFromTitleButton.Text = "Remove All of Selection Access from User's Calendar"
@@ -1343,14 +1996,24 @@ function Build-MainForm {
     $script:RemoveFromTitleButton.BackColor = [System.Drawing.Color]::FromArgb(150, 50, 50)
     $script:RemoveFromTitleButton.ForeColor = [System.Drawing.Color]::White
     $script:RemoveFromTitleButton.FlatStyle = "Flat"
-    $script:RemoveFromTitleButton.Add_Click({ Remove-BulkPermissionsFromTitle })
+    $script:RemoveFromTitleButton.Add_Click({
+        if ($script:SingleRadio.Checked) {
+            Remove-SinglePermission
+        }
+        elseif ($script:BulkCSVRadio.Checked) {
+            Remove-BulkCSVPermissions
+        }
+        else {
+            Remove-BulkPermissionsFromTitle
+        }
+    })
 
     $actionsGroup.Controls.AddRange(@($script:GrantToUserButton, $script:GrantToTitleButton, $script:RemoveFromUserButton, $script:RemoveFromTitleButton))
 
     # Results Group
     $resultsGroup = New-Object System.Windows.Forms.GroupBox
     $resultsGroup.Text = "Results Log"
-    $resultsGroup.Location = New-Object System.Drawing.Point(15, 565)
+    $resultsGroup.Location = New-Object System.Drawing.Point(15, 625)
     $resultsGroup.Size = New-Object System.Drawing.Size(655, 140)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
