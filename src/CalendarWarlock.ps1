@@ -251,14 +251,17 @@ function Test-ValidAccessLevel {
     )
 
     $validAccessLevels = @(
-        "None",
+        "Owner",
+        "PublishingEditor",
+        "Editor",
+        "PublishingAuthor",
+        "Author",
+        "NonEditingAuthor",
+        "Reviewer",
+        "Contributor",
         "AvailabilityOnly",
         "LimitedDetails",
-        "Reviewer",
-        "Editor",
-        "Author",
-        "PublishingAuthor",
-        "PublishingEditor"
+        "None"
     )
 
     return $validAccessLevels -contains $AccessLevel
