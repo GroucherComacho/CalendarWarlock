@@ -464,8 +464,10 @@ function Get-UserByEmail {
         ) -ErrorAction SilentlyContinue
 
         if (-not $user) {
+            # Escape single quotes to prevent OData injection
+            $escapedEmail = $Email.Replace("'", "''")
             # Try searching by mail
-            $user = Get-MgUser -Filter "mail eq '$Email'" -Property @(
+            $user = Get-MgUser -Filter "mail eq '$escapedEmail'" -Property @(
                 "Id",
                 "DisplayName",
                 "UserPrincipalName",
@@ -530,8 +532,11 @@ function Search-Users {
     )
 
     try {
+        # Escape single quotes to prevent OData injection
+        $escapedSearchTerm = $SearchTerm.Replace("'", "''")
+
         # Use startsWith for searching (Graph API doesn't support contains easily)
-        $filter = "startsWith(displayName, '$SearchTerm') or startsWith(mail, '$SearchTerm') or startsWith(userPrincipalName, '$SearchTerm')"
+        $filter = "startsWith(displayName, '$escapedSearchTerm') or startsWith(mail, '$escapedSearchTerm') or startsWith(userPrincipalName, '$escapedSearchTerm')"
 
         $users = Get-MgUser -Filter $filter -Property @(
             "Id",
