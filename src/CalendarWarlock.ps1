@@ -928,6 +928,17 @@ function Grant-BulkPermissionsToTitle {
         return
     }
 
+    # Validate email format
+    if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the calendar owner.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     $methodResult = Get-UsersForSelectedMethod
     if (-not $methodResult.Success -and -not $methodResult.Method) {
         [System.Windows.Forms.MessageBox]::Show(
@@ -1131,6 +1142,17 @@ function Remove-BulkPermissionsFromUser {
         return
     }
 
+    # Validate email format
+    if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the target user.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     $methodResult = Get-UsersForSelectedMethod
     if (-not $methodResult.Success -and -not $methodResult.Method) {
         [System.Windows.Forms.MessageBox]::Show(
@@ -1262,6 +1284,17 @@ function Remove-BulkPermissionsFromTitle {
         [System.Windows.Forms.MessageBox]::Show(
             "Please enter the calendar owner's email.",
             "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Validate email format
+    if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the calendar owner.",
+            "Invalid Email Format",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Warning
         )

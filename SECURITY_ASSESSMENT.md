@@ -1,9 +1,9 @@
 # CalendarWarlock Security Assessment Report
 
 **Date:** 2026-01-19
-**Last Updated:** 2026-01-19 (Re-assessment)
+**Last Updated:** 2026-01-19 (Final Security Audit)
 **Assessed By:** Security Penetration Testing
-**Version:** 1.0.0.1
+**Version:** 1.0.0.2
 
 ---
 
@@ -19,7 +19,7 @@ CalendarWarlock is a PowerShell-based Windows GUI application for managing Excha
 |----------|----------|------------|-----------|
 | Critical | 0        | 0          | 0         |
 | High     | 2        | 2          | 0         |
-| Medium   | 4        | 4          | 0         |
+| Medium   | 5        | 5          | 0         |
 | Low      | 3        | 1          | 2         |
 | Info     | 2        | 0          | 2         |
 
@@ -129,7 +129,27 @@ This function is used throughout the application when displaying errors to users
 
 ---
 
-## Finding Discovered and Fixed During This Assessment
+## Findings Discovered and Fixed During This Assessment
+
+### MEDIUM-005: Inconsistent Email Format Validation - FIXED
+
+**File:** `src/CalendarWarlock.ps1:931-940, 1145-1154, 1293-1302`
+**Severity:** MEDIUM
+**CVSS Score:** 4.3
+**Status:** ✅ REMEDIATED (during this assessment)
+
+**Description:**
+Several bulk operation functions were missing email format validation, creating inconsistency with other functions that did validate email format. Invalid email formats could be passed to Exchange cmdlets.
+
+**Affected Functions:**
+- `Grant-BulkPermissionsToTitle` - Missing validation for calendar owner email
+- `Remove-BulkPermissionsFromUser` - Missing validation for target user email
+- `Remove-BulkPermissionsFromTitle` - Missing validation for calendar owner email
+
+**Fix Applied:**
+Added `Test-ValidEmailFormat` validation to all three functions before processing, matching the pattern used in `Grant-BulkPermissionsToUser` and `Grant-SinglePermission`.
+
+---
 
 ### MEDIUM-003: Incomplete AccessLevel Validation List - FIXED
 
@@ -243,13 +263,14 @@ The application demonstrates excellent security practices:
 4. **Confirmation Dialogs:** Bulk operations require explicit user confirmation
 5. **Complete OData Escaping:** All user inputs properly escaped in Graph API queries
 6. **CSV Formula Injection Protection:** Input sanitization prevents Excel formula injection attacks
-7. **Email Format Validation:** All email inputs validated against RFC-compliant regex
+7. **Email Format Validation:** All email inputs validated against RFC-compliant regex across all operations
 8. **AccessLevel Pre-Validation:** CSV access levels validated before processing
 9. **Module Path Security:** Path traversal attacks prevented with canonical path validation
 10. **Error Message Sanitization:** Sensitive information removed from user-facing errors
 11. **Logs Excluded from Git:** `.gitignore` correctly excludes `*.log` files
 12. **Connection State Management:** Proper tracking of connection state with cleanup on close
 13. **Error Handling:** Try-catch blocks throughout with proper error propagation
+14. **Consistent Input Validation:** All bulk operations now consistently validate email formats
 
 ---
 
@@ -290,15 +311,16 @@ Result: Row skipped with warning message
 
 ## Conclusion
 
-CalendarWarlock has significantly improved its security posture since the initial assessment. All HIGH and most MEDIUM severity vulnerabilities have been successfully remediated:
+CalendarWarlock has significantly improved its security posture since the initial assessment. All HIGH and MEDIUM severity vulnerabilities have been successfully remediated:
 
 **Key Improvements:**
 - ✅ OData injection vulnerabilities fixed with proper input escaping
 - ✅ CSV formula injection protection implemented
-- ✅ Email format validation added throughout the application
+- ✅ Email format validation added consistently across all operations
 - ✅ AccessLevel pre-validation with complete list of valid values
 - ✅ Module path security with traversal attack prevention
 - ✅ Error message sanitization to prevent information disclosure
+- ✅ Consistent input validation across all bulk permission functions
 
 **Remaining Items (Low Priority):**
 - Log files contain operational data (mitigated by .gitignore exclusion)
@@ -312,4 +334,5 @@ The application is now suitable for production deployment within enterprise envi
 ---
 
 *Assessment completed: 2026-01-19*
+*Final security audit completed: 2026-01-19*
 *Next review recommended: 6 months or upon significant code changes*
