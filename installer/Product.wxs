@@ -73,6 +73,10 @@
         <File Id="ReadmeMd" Source="..\README.md" KeyPath="yes" />
       </Component>
 
+      <Component Id="IconFile" Guid="D5E6F7A8-B9C0-8D9E-2F3A-4B5C6D7E8F9A">
+        <File Id="IconIco" Source="..\icon.ico" KeyPath="yes" />
+      </Component>
+
     </ComponentGroup>
 
     <!-- Source files -->
@@ -142,8 +146,10 @@
     </ComponentGroup>
 
     <!-- ==================== Icon ==================== -->
-    <!-- Using a generic icon - you can replace with a custom .ico file -->
-    <Icon Id="CalendarIcon" SourceFile="..\CalendarWarlock.bat" />
+    <Icon Id="CalendarIcon" SourceFile="..\icon.ico" />
+
+    <!-- Add/Remove Programs icon -->
+    <Property Id="ARPPRODUCTICON" Value="CalendarIcon" />
 
     <!-- ==================== Features ==================== -->
     <Feature Id="ProductFeature" Title="CalendarWarlock" Level="1"
