@@ -72,14 +72,51 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-# Import custom modules
+# Import custom modules with security validation
 try {
-    Import-Module (Join-Path $script:ScriptPath "Modules\ExchangeOperations.psm1") -Force
-    Import-Module (Join-Path $script:ScriptPath "Modules\AzureADOperations.psm1") -Force
+    # Get absolute path to modules directory
+    $modulesPath = [System.IO.Path]::GetFullPath((Join-Path $script:ScriptPath "Modules"))
+
+    # Validate modules directory exists and is within the script directory
+    if (-not (Test-Path -Path $modulesPath -PathType Container)) {
+        throw "Modules directory not found: $modulesPath"
+    }
+
+    # Verify the modules path is within the script directory (prevent path traversal)
+    $resolvedScriptPath = [System.IO.Path]::GetFullPath($script:ScriptPath)
+    if (-not $modulesPath.StartsWith($resolvedScriptPath)) {
+        throw "Security error: Modules path is outside the application directory"
+    }
+
+    # Define expected modules with their full paths
+    $customModules = @(
+        @{ Name = "ExchangeOperations"; Path = Join-Path $modulesPath "ExchangeOperations.psm1" },
+        @{ Name = "AzureADOperations"; Path = Join-Path $modulesPath "AzureADOperations.psm1" }
+    )
+
+    foreach ($module in $customModules) {
+        $modulePath = [System.IO.Path]::GetFullPath($module.Path)
+
+        # Verify module is within the modules directory
+        if (-not $modulePath.StartsWith($modulesPath)) {
+            throw "Security error: Module path traversal detected for $($module.Name)"
+        }
+
+        # Verify module file exists and has correct extension
+        if (-not (Test-Path -Path $modulePath -PathType Leaf)) {
+            throw "Module file not found: $($module.Name)"
+        }
+
+        if ([System.IO.Path]::GetExtension($modulePath) -ne ".psm1") {
+            throw "Invalid module file extension for $($module.Name)"
+        }
+
+        Import-Module $modulePath -Force
+    }
 }
 catch {
     [System.Windows.Forms.MessageBox]::Show(
-        "Failed to load required modules. Please ensure the Modules folder exists.`n`nError: $($_.Exception.Message)",
+        "Failed to load required modules. Please ensure the Modules folder exists and contains valid module files.",
         "CalendarWarlock - Module Error",
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Error
@@ -138,6 +175,125 @@ function Write-Log {
         $script:StatusLabel.Text = $Message
         [System.Windows.Forms.Application]::DoEvents()
     }
+}
+#endregion
+
+#region Security Helper Functions
+function Sanitize-CSVValue {
+    <#
+    .SYNOPSIS
+        Sanitizes a string value to prevent CSV formula injection
+    .DESCRIPTION
+        Escapes values that could be interpreted as formulas by Excel/spreadsheet software.
+        Prefixes with a single quote any value starting with =, +, -, @, tab, or carriage return.
+    .PARAMETER Value
+        The string value to sanitize
+    .EXAMPLE
+        Sanitize-CSVValue -Value "=cmd|'/C calc'!A0"
+        Returns: "'=cmd|'/C calc'!A0"
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrEmpty($Value)) {
+        return $Value
+    }
+
+    # Characters that can trigger formula interpretation in Excel
+    $formulaTriggers = @('=', '+', '-', '@', "`t", "`r", "`n")
+
+    foreach ($trigger in $formulaTriggers) {
+        if ($Value.StartsWith($trigger)) {
+            # Prefix with single quote to treat as text in Excel
+            return "'" + $Value
+        }
+    }
+
+    return $Value
+}
+
+function Test-ValidEmailFormat {
+    <#
+    .SYNOPSIS
+        Validates that a string is a properly formatted email address
+    .PARAMETER Email
+        The email address to validate
+    .EXAMPLE
+        Test-ValidEmailFormat -Email "user@contoso.com"
+        Returns: $true
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Email
+    )
+
+    # Standard email regex pattern
+    $emailPattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+    return $Email -match $emailPattern
+}
+
+function Test-ValidAccessLevel {
+    <#
+    .SYNOPSIS
+        Validates that an access level is one of the allowed values
+    .PARAMETER AccessLevel
+        The access level to validate
+    .EXAMPLE
+        Test-ValidAccessLevel -AccessLevel "Reviewer"
+        Returns: $true
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$AccessLevel
+    )
+
+    $validAccessLevels = @(
+        "None",
+        "AvailabilityOnly",
+        "LimitedDetails",
+        "Reviewer",
+        "Editor",
+        "Author",
+        "PublishingAuthor",
+        "PublishingEditor"
+    )
+
+    return $validAccessLevels -contains $AccessLevel
+}
+
+function Sanitize-ErrorMessage {
+    <#
+    .SYNOPSIS
+        Sanitizes error messages to prevent information disclosure
+    .DESCRIPTION
+        Removes potentially sensitive information like file paths, server names, etc.
+    .PARAMETER ErrorMessage
+        The error message to sanitize
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$ErrorMessage
+    )
+
+    if ([string]::IsNullOrEmpty($ErrorMessage)) {
+        return "An error occurred"
+    }
+
+    # Remove file paths (Windows and Unix style)
+    $sanitized = $ErrorMessage -replace '[A-Za-z]:\\[^:]*\\', '[path]\'
+    $sanitized = $sanitized -replace '/[^\s:]+/', '/[path]/'
+
+    # Remove potential connection strings
+    $sanitized = $sanitized -replace 'Server=[^;]+;', 'Server=[redacted];'
+    $sanitized = $sanitized -replace 'Data Source=[^;]+;', 'Data Source=[redacted];'
+
+    # Remove potential IP addresses
+    $sanitized = $sanitized -replace '\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '[IP]'
+
+    return $sanitized
 }
 #endregion
 
@@ -318,12 +474,12 @@ function Connect-Services {
         Refresh-AllSelections
     }
     catch {
-        Update-ResultsLog "Connection failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Connection failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Connection failed: $($_.Exception.Message)" "ERROR"
         $script:IsConnected = $false
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Failed to connect: $($_.Exception.Message)",
+            "Failed to connect: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Connection Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -354,7 +510,7 @@ function Disconnect-Services {
         Write-Log "Disconnected from all services" "SUCCESS"
     }
     catch {
-        Update-ResultsLog "Error during disconnect: $($_.Exception.Message)" "Warning"
+        Update-ResultsLog "Error during disconnect: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Warning"
     }
 }
 
@@ -380,7 +536,7 @@ function Refresh-JobTitles {
         }
     }
     catch {
-        Update-ResultsLog "Failed to load job titles: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Failed to load job titles: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
     }
 }
 
@@ -406,7 +562,7 @@ function Refresh-Departments {
         }
     }
     catch {
-        Update-ResultsLog "Failed to load departments: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Failed to load departments: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
     }
 }
 
@@ -466,7 +622,7 @@ function Search-TargetUser {
         }
     }
     catch {
-        Update-ResultsLog "Search failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Search failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
     }
 }
 
@@ -523,7 +679,7 @@ function Get-TargetUserPermissions {
         }
     }
     catch {
-        Update-ResultsLog "Error getting permissions: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Error getting permissions: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
     }
 }
 
@@ -613,6 +769,17 @@ function Grant-BulkPermissionsToUser {
         [System.Windows.Forms.MessageBox]::Show(
             "Please enter a target user email.",
             "Missing Information",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    # Validate email format
+    if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the target user.",
+            "Invalid Email Format",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Warning
         )
@@ -713,11 +880,11 @@ function Grant-BulkPermissionsToUser {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -852,11 +1019,11 @@ function Grant-BulkPermissionsToTitle {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1054,11 +1221,11 @@ function Remove-BulkPermissionsFromUser {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1191,11 +1358,11 @@ function Remove-BulkPermissionsFromTitle {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1257,6 +1424,27 @@ function Grant-SinglePermission {
         return
     }
 
+    # Validate email format
+    if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the calendar owner.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the target user.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     Clear-ResultsLog
     Update-ResultsLog "Granting single calendar permission..." "Info"
     Update-ResultsLog "Calendar Owner: $calendarOwner" "Info"
@@ -1293,11 +1481,11 @@ function Grant-SinglePermission {
         }
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1394,11 +1582,11 @@ function Remove-SinglePermission {
         }
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1489,9 +1677,10 @@ function Grant-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            $calendarOwner = $entry.MailboxEmail.Trim()
-            $targetUser = $entry.UserEmail.Trim()
-            $permission = $entry.AccessLevel.Trim()
+            # Sanitize CSV values to prevent formula injection
+            $calendarOwner = Sanitize-CSVValue -Value $entry.MailboxEmail.Trim()
+            $targetUser = Sanitize-CSVValue -Value $entry.UserEmail.Trim()
+            $permission = Sanitize-CSVValue -Value $entry.AccessLevel.Trim()
 
             if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser) -or [string]::IsNullOrEmpty($permission)) {
                 Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
@@ -1502,6 +1691,29 @@ function Grant-BulkCSVPermissions {
 
             if ($calendarOwner -eq $targetUser) {
                 Update-ResultsLog "Skipping row $($i + 1): Same user for owner and target" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            # Validate email formats
+            if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+                Update-ResultsLog "Skipping row $($i + 1): Invalid email format for MailboxEmail '$calendarOwner'" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+                Update-ResultsLog "Skipping row $($i + 1): Invalid email format for UserEmail '$targetUser'" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            # Validate access level
+            if (-not (Test-ValidAccessLevel -AccessLevel $permission)) {
+                Update-ResultsLog "Skipping row $($i + 1): Invalid AccessLevel '$permission'. Valid values: None, AvailabilityOnly, LimitedDetails, Reviewer, Editor, Author, PublishingAuthor, PublishingEditor" "Warning"
                 $skipCount++
                 Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
                 continue
@@ -1536,11 +1748,11 @@ function Grant-BulkCSVPermissions {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -1632,11 +1844,27 @@ function Remove-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            $calendarOwner = $entry.MailboxEmail.Trim()
-            $targetUser = $entry.UserEmail.Trim()
+            # Sanitize CSV values to prevent formula injection
+            $calendarOwner = Sanitize-CSVValue -Value $entry.MailboxEmail.Trim()
+            $targetUser = Sanitize-CSVValue -Value $entry.UserEmail.Trim()
 
             if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser)) {
                 Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            # Validate email formats
+            if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+                Update-ResultsLog "Skipping row $($i + 1): Invalid email format for MailboxEmail '$calendarOwner'" "Warning"
+                $skipCount++
+                Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+                continue
+            }
+
+            if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+                Update-ResultsLog "Skipping row $($i + 1): Invalid email format for UserEmail '$targetUser'" "Warning"
                 $skipCount++
                 Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
                 continue
@@ -1671,11 +1899,11 @@ function Remove-BulkCSVPermissions {
         )
     }
     catch {
-        Update-ResultsLog "Operation failed: $($_.Exception.Message)" "Error"
+        Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
         Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
-            "Operation failed: $($_.Exception.Message)",
+            "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
             "Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
