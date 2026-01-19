@@ -24,6 +24,10 @@ $script:IsConnected = $false
 $script:CSVFilePath = $null
 $script:CurrentTheme = "Dark"
 
+# Load required assemblies for Windows Forms and Drawing
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
 # Theme Configurations
 $script:Themes = @{
     Dark = @{
