@@ -1655,24 +1655,25 @@ function Build-MainForm {
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
     $script:MainForm.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $script:MainForm.BackColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
 
     # Header Panel
     $headerPanel = New-Object System.Windows.Forms.Panel
     $headerPanel.Location = New-Object System.Drawing.Point(0, 0)
     $headerPanel.Size = New-Object System.Drawing.Size(700, 75)
-    $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
+    $headerPanel.BackColor = [System.Drawing.Color]::FromArgb(212, 168, 67)
 
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "CalendarWarlock"
     $titleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
-    $titleLabel.ForeColor = [System.Drawing.Color]::White
+    $titleLabel.ForeColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
     $titleLabel.Location = New-Object System.Drawing.Point(15, 8)
     $titleLabel.AutoSize = $true
 
     $subtitleLabel = New-Object System.Windows.Forms.Label
     $subtitleLabel.Text = "Exchange Online Bulk Calendar Permissions Manager"
     $subtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
-    $subtitleLabel.ForeColor = [System.Drawing.Color]::White
+    $subtitleLabel.ForeColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
     $subtitleLabel.Location = New-Object System.Drawing.Point(20, 42)
     $subtitleLabel.AutoSize = $true
 
@@ -1683,6 +1684,8 @@ function Build-MainForm {
     $connectionGroup.Text = "Connection"
     $connectionGroup.Location = New-Object System.Drawing.Point(15, 85)
     $connectionGroup.Size = New-Object System.Drawing.Size(655, 70)
+    $connectionGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $connectionGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     $orgLabel = New-Object System.Windows.Forms.Label
     $orgLabel.Text = "Organization:"
@@ -1698,8 +1701,8 @@ function Build-MainForm {
     $script:ConnectButton.Text = "Connect"
     $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 25)
     $script:ConnectButton.Size = New-Object System.Drawing.Size(100, 28)
-    $script:ConnectButton.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
-    $script:ConnectButton.ForeColor = [System.Drawing.Color]::White
+    $script:ConnectButton.BackColor = [System.Drawing.Color]::FromArgb(232, 168, 32)
+    $script:ConnectButton.ForeColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
     $script:ConnectButton.FlatStyle = "Flat"
     $script:ConnectButton.Add_Click({
         if ($script:IsConnected) {
@@ -1727,6 +1730,8 @@ function Build-MainForm {
     $methodGroup.Text = "Method Selection"
     $methodGroup.Location = New-Object System.Drawing.Point(15, 165)
     $methodGroup.Size = New-Object System.Drawing.Size(655, 160)
+    $methodGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $methodGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     # Radio buttons for method selection
     $script:SingleRadio = New-Object System.Windows.Forms.RadioButton
@@ -1747,7 +1752,7 @@ function Build-MainForm {
     })
 
     $script:DepartmentRadio = New-Object System.Windows.Forms.RadioButton
-    $script:DepartmentRadio.Text = "Department"
+    $script:DepartmentRadio.Text = "Dept."
     $script:DepartmentRadio.Location = New-Object System.Drawing.Point(15, 85)
     $script:DepartmentRadio.Size = New-Object System.Drawing.Size(100, 20)
     $script:DepartmentRadio.Add_CheckedChanged({
@@ -1813,7 +1818,7 @@ function Build-MainForm {
     $script:CSVFileLabel.Text = "No file selected"
     $script:CSVFileLabel.Location = New-Object System.Drawing.Point(105, 117)
     $script:CSVFileLabel.Size = New-Object System.Drawing.Size(240, 20)
-    $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::Gray
+    $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::FromArgb(138, 130, 120)
     $script:CSVFileLabel.Enabled = $false
 
     $script:BrowseCSVButton = New-Object System.Windows.Forms.Button
@@ -1828,7 +1833,7 @@ function Build-MainForm {
         if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
             $script:CSVFilePath = $openFileDialog.FileName
             $script:CSVFileLabel.Text = [System.IO.Path]::GetFileName($script:CSVFilePath)
-            $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::Black
+            $script:CSVFileLabel.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
         }
     })
 
@@ -1861,6 +1866,8 @@ function Build-MainForm {
     $targetUserGroup.Text = "Target User"
     $targetUserGroup.Location = New-Object System.Drawing.Point(15, 335)
     $targetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
+    $targetUserGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $targetUserGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     $targetUserLabel = New-Object System.Windows.Forms.Label
     $targetUserLabel.Text = "User Email:"
@@ -1891,6 +1898,8 @@ function Build-MainForm {
     $permissionGroup.Text = "Permission Level"
     $permissionGroup.Location = New-Object System.Drawing.Point(15, 415)
     $permissionGroup.Size = New-Object System.Drawing.Size(655, 70)
+    $permissionGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $permissionGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     $permissionLabel = New-Object System.Windows.Forms.Label
     $permissionLabel.Text = "Access Level:"
@@ -1912,7 +1921,7 @@ function Build-MainForm {
     $script:PermissionDescLabel = New-Object System.Windows.Forms.Label
     $script:PermissionDescLabel.Location = New-Object System.Drawing.Point(320, 30)
     $script:PermissionDescLabel.Size = New-Object System.Drawing.Size(320, 20)
-    $script:PermissionDescLabel.ForeColor = [System.Drawing.Color]::Gray
+    $script:PermissionDescLabel.ForeColor = [System.Drawing.Color]::FromArgb(138, 130, 120)
 
     $script:PermissionComboBox.Add_SelectedIndexChanged({
         $selectedLevel = $script:PermissionComboBox.SelectedItem
@@ -1931,13 +1940,15 @@ function Build-MainForm {
     $actionsGroup.Text = "Actions"
     $actionsGroup.Location = New-Object System.Drawing.Point(15, 495)
     $actionsGroup.Size = New-Object System.Drawing.Size(655, 120)
+    $actionsGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $actionsGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
     $script:GrantToUserButton.Text = "Grant User Access to All Calendars of Selection"
     $script:GrantToUserButton.Location = New-Object System.Drawing.Point(15, 25)
     $script:GrantToUserButton.Size = New-Object System.Drawing.Size(305, 35)
-    $script:GrantToUserButton.BackColor = [System.Drawing.Color]::FromArgb(0, 150, 0)
-    $script:GrantToUserButton.ForeColor = [System.Drawing.Color]::White
+    $script:GrantToUserButton.BackColor = [System.Drawing.Color]::FromArgb(232, 168, 32)
+    $script:GrantToUserButton.ForeColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
     $script:GrantToUserButton.FlatStyle = "Flat"
     $script:GrantToUserButton.Add_Click({
         if ($script:SingleRadio.Checked) {
@@ -1955,8 +1966,8 @@ function Build-MainForm {
     $script:GrantToTitleButton.Text = "Grant All of Selection Access to User's Calendar"
     $script:GrantToTitleButton.Location = New-Object System.Drawing.Point(335, 25)
     $script:GrantToTitleButton.Size = New-Object System.Drawing.Size(305, 35)
-    $script:GrantToTitleButton.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 180)
-    $script:GrantToTitleButton.ForeColor = [System.Drawing.Color]::White
+    $script:GrantToTitleButton.BackColor = [System.Drawing.Color]::FromArgb(212, 168, 67)
+    $script:GrantToTitleButton.ForeColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
     $script:GrantToTitleButton.FlatStyle = "Flat"
     $script:GrantToTitleButton.Add_Click({
         if ($script:SingleRadio.Checked) {
@@ -1974,8 +1985,8 @@ function Build-MainForm {
     $script:RemoveFromUserButton.Text = "Remove User Access from All Calendars of Selection"
     $script:RemoveFromUserButton.Location = New-Object System.Drawing.Point(15, 70)
     $script:RemoveFromUserButton.Size = New-Object System.Drawing.Size(305, 35)
-    $script:RemoveFromUserButton.BackColor = [System.Drawing.Color]::FromArgb(180, 50, 50)
-    $script:RemoveFromUserButton.ForeColor = [System.Drawing.Color]::White
+    $script:RemoveFromUserButton.BackColor = [System.Drawing.Color]::FromArgb(138, 130, 120)
+    $script:RemoveFromUserButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
     $script:RemoveFromUserButton.FlatStyle = "Flat"
     $script:RemoveFromUserButton.Add_Click({
         if ($script:SingleRadio.Checked) {
@@ -1993,8 +2004,8 @@ function Build-MainForm {
     $script:RemoveFromTitleButton.Text = "Remove All of Selection Access from User's Calendar"
     $script:RemoveFromTitleButton.Location = New-Object System.Drawing.Point(335, 70)
     $script:RemoveFromTitleButton.Size = New-Object System.Drawing.Size(305, 35)
-    $script:RemoveFromTitleButton.BackColor = [System.Drawing.Color]::FromArgb(150, 50, 50)
-    $script:RemoveFromTitleButton.ForeColor = [System.Drawing.Color]::White
+    $script:RemoveFromTitleButton.BackColor = [System.Drawing.Color]::FromArgb(58, 48, 40)
+    $script:RemoveFromTitleButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
     $script:RemoveFromTitleButton.FlatStyle = "Flat"
     $script:RemoveFromTitleButton.Add_Click({
         if ($script:SingleRadio.Checked) {
@@ -2015,6 +2026,8 @@ function Build-MainForm {
     $resultsGroup.Text = "Results Log"
     $resultsGroup.Location = New-Object System.Drawing.Point(15, 625)
     $resultsGroup.Size = New-Object System.Drawing.Size(655, 140)
+    $resultsGroup.BackColor = [System.Drawing.Color]::FromArgb(42, 32, 24)
+    $resultsGroup.ForeColor = [System.Drawing.Color]::FromArgb(240, 232, 220)
 
     $script:ResultsTextBox = New-Object System.Windows.Forms.TextBox
     $script:ResultsTextBox.Location = New-Object System.Drawing.Point(15, 25)
@@ -2023,8 +2036,8 @@ function Build-MainForm {
     $script:ResultsTextBox.ScrollBars = "Vertical"
     $script:ResultsTextBox.ReadOnly = $true
     $script:ResultsTextBox.Font = New-Object System.Drawing.Font("Consolas", 8)
-    $script:ResultsTextBox.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
-    $script:ResultsTextBox.ForeColor = [System.Drawing.Color]::LightGreen
+    $script:ResultsTextBox.BackColor = [System.Drawing.Color]::FromArgb(26, 20, 16)
+    $script:ResultsTextBox.ForeColor = [System.Drawing.Color]::FromArgb(212, 168, 67)
 
     $resultsGroup.Controls.Add($script:ResultsTextBox)
 
