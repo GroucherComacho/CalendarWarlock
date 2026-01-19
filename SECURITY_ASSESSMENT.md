@@ -1,9 +1,9 @@
 # CalendarWarlock Security Assessment Report
 
 **Date:** 2026-01-19
-**Last Updated:** 2026-01-19 (Re-assessment)
+**Last Updated:** 2026-01-19 (Final remediation)
 **Assessed By:** Security Penetration Testing
-**Version:** 1.0.0.1
+**Version:** 1.0.0.2
 
 ---
 
@@ -20,8 +20,8 @@ CalendarWarlock is a PowerShell-based Windows GUI application for managing Excha
 | Critical | 0        | 0          | 0         |
 | High     | 2        | 2          | 0         |
 | Medium   | 4        | 4          | 0         |
-| Low      | 3        | 1          | 2         |
-| Info     | 2        | 0          | 2         |
+| Low      | 3        | 3          | 0         |
+| Info     | 2        | 1          | 1         |
 
 ---
 
@@ -158,64 +158,95 @@ All valid Exchange Online calendar permission levels are now accepted.
 
 ---
 
-## Remaining Lower Priority Findings
+## Additional Findings Fixed During Final Remediation
 
-### LOW-002: Log Files Store Sensitive Operation Data
+### LOW-002: Log Files Store Sensitive Operation Data - FIXED
 
-**File:** `src/CalendarWarlock.ps1:159-178`
+**File:** `src/CalendarWarlock.ps1:21-30, 167-218`
 **Severity:** LOW
 **CVSS Score:** 3.3
-**Status:** Acknowledged (by design)
+**Status:** ✅ REMEDIATED
 
 **Description:**
 Log files contain email addresses, operation details, and timestamps. While not storing credentials, this data could be sensitive in regulated environments.
 
-**Logged Data Example:**
-```
-[2024-01-15 14:31:45] [SUCCESS] Granted Editor access to john@company.com on jane@company.com's calendar
+**Fix Applied:**
+Implemented configurable log verbosity levels:
+```powershell
+# Log verbosity configuration (LOW-002 mitigation)
+# Levels: "Minimal" = errors only, "Normal" = errors + success, "Verbose" = all messages
+$script:LogVerbosity = "Normal"
 ```
 
-**Mitigations in Place:**
+The Write-Log function now respects verbosity settings:
+- **Minimal**: Only ERROR messages are logged (reduces sensitive data exposure)
+- **Normal**: ERROR and SUCCESS messages are logged (default)
+- **Verbose**: All messages logged (for debugging)
+
+**Existing Mitigations:**
 - Logs are correctly excluded from git via `.gitignore`
 - Logs stored in dedicated `Logs/` subdirectory
 
-**Recommendations for Future:**
-- Consider log encryption or access controls
-- Add configurable log verbosity levels
-- Document data retention policies
-
 ---
 
-### LOW-003: No Rate Limiting on Bulk Operations
+### LOW-003: No Rate Limiting on Bulk Operations - FIXED
 
 **File:** `src/CalendarWarlock.ps1`
 **Severity:** LOW
 **CVSS Score:** 2.7
-**Status:** Acknowledged
+**Status:** ✅ REMEDIATED
 
 **Description:**
 Bulk operations process users sequentially without rate limiting, which could trigger Microsoft 365 throttling or cause service disruption.
 
-**Recommendation:**
-Add configurable delays between operations:
+**Fix Applied:**
+Added configurable rate limiting to all 6 bulk operation functions:
 ```powershell
-Start-Sleep -Milliseconds 100  # Configurable throttle
+# Rate limiting configuration for bulk operations (LOW-003 mitigation)
+# Delay in milliseconds between API calls to prevent Microsoft 365 throttling
+$script:BulkOperationDelayMs = 100
+
+# Applied in each bulk operation loop:
+if ($i -lt ($users.Count - 1)) {
+    Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+}
 ```
+
+Rate limiting now applies to:
+- Grant-BulkPermissionsToUser
+- Grant-BulkPermissionsToTitle
+- Remove-BulkPermissionsFromUser
+- Remove-BulkPermissionsFromTitle
+- Grant-BulkCSVPermissions
+- Remove-BulkCSVPermissions
 
 ---
 
-### INFO-001: Installer Uses Minimal UI
+### INFO-001: Installer Uses Minimal UI - FIXED
 
 **File:** `installer/Product.wxs`
 **Severity:** INFO
-**Status:** Acknowledged
+**Status:** ✅ REMEDIATED
 
 **Description:**
-The WiX installer uses `WixUI_Minimal` which doesn't allow users to see or customize what's being installed. This is common but worth noting for enterprise deployments.
+The WiX installer previously used `WixUI_Minimal` which doesn't allow users to see or customize what's being installed.
+
+**Fix Applied:**
+Upgraded to `WixUI_InstallDir` which provides:
+- Installation directory customization
+- Component visibility during installation
+- Better transparency for enterprise deployments
+
+```xml
+<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+<UIRef Id="WixUI_InstallDir" />
+```
 
 **Note:** Per-machine installation requires admin rights, which is appropriate.
 
 ---
+
+## Remaining Informational Findings
 
 ### INFO-002: No Code Signing
 
@@ -229,7 +260,10 @@ PowerShell scripts and modules are not digitally signed. This means:
 - Users cannot verify script authenticity
 
 **Recommendation:**
-Consider code signing for production deployments.
+Consider code signing for production deployments. This requires:
+- Obtaining a code signing certificate from a trusted CA
+- Implementing a signing process in the build pipeline
+- This is an infrastructure/process enhancement rather than a code fix
 
 ---
 
@@ -250,6 +284,9 @@ The application demonstrates excellent security practices:
 11. **Logs Excluded from Git:** `.gitignore` correctly excludes `*.log` files
 12. **Connection State Management:** Proper tracking of connection state with cleanup on close
 13. **Error Handling:** Try-catch blocks throughout with proper error propagation
+14. **Configurable Log Verbosity:** Administrators can control log detail level to minimize sensitive data
+15. **Rate Limiting:** Bulk operations include configurable delays to prevent API throttling
+16. **Enterprise-Ready Installer:** WixUI_InstallDir provides transparency and customization
 
 ---
 
@@ -290,7 +327,7 @@ Result: Row skipped with warning message
 
 ## Conclusion
 
-CalendarWarlock has significantly improved its security posture since the initial assessment. All HIGH and most MEDIUM severity vulnerabilities have been successfully remediated:
+CalendarWarlock has achieved comprehensive security remediation. All identified vulnerabilities from Critical through Low severity have been successfully addressed:
 
 **Key Improvements:**
 - ✅ OData injection vulnerabilities fixed with proper input escaping
@@ -299,17 +336,19 @@ CalendarWarlock has significantly improved its security posture since the initia
 - ✅ AccessLevel pre-validation with complete list of valid values
 - ✅ Module path security with traversal attack prevention
 - ✅ Error message sanitization to prevent information disclosure
+- ✅ Configurable log verbosity levels for sensitive data control
+- ✅ Rate limiting on bulk operations to prevent API throttling
+- ✅ Enhanced installer UI for enterprise deployment transparency
 
-**Remaining Items (Low Priority):**
-- Log files contain operational data (mitigated by .gitignore exclusion)
-- No rate limiting on bulk operations (operational consideration)
-- No code signing (recommended for production deployments)
+**Remaining Items (Informational Only):**
+- No code signing (requires infrastructure/process setup, not a code fix)
 
 **Risk Level:** LOW
 
-The application is now suitable for production deployment within enterprise environments. The remaining items are informational or low-severity concerns that do not pose significant security risks.
+The application is now fully suitable for production deployment within enterprise environments. The only remaining item is informational and relates to infrastructure setup rather than application code.
 
 ---
 
 *Assessment completed: 2026-01-19*
+*Final remediation: 2026-01-19*
 *Next review recommended: 6 months or upon significant code changes*

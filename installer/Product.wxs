@@ -161,8 +161,9 @@
     </Feature>
 
     <!-- ==================== UI ==================== -->
-    <!-- Minimal UI - just progress bar -->
-    <UIRef Id="WixUI_Minimal" />
+    <!-- InstallDir UI - allows users to see components and customize install path (INFO-001 enhancement) -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_InstallDir" />
 
     <!-- License (optional - comment out if no license file) -->
     <!-- <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" /> -->

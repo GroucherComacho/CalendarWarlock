@@ -24,6 +24,14 @@ $script:IsConnected = $false
 $script:CSVFilePath = $null
 $script:CurrentTheme = "Dark"
 
+# Log verbosity configuration (LOW-002 mitigation)
+# Levels: "Minimal" = errors only, "Normal" = errors + success, "Verbose" = all messages
+$script:LogVerbosity = "Normal"
+
+# Rate limiting configuration for bulk operations (LOW-003 mitigation)
+# Delay in milliseconds between API calls to prevent Microsoft 365 throttling
+$script:BulkOperationDelayMs = 100
+
 # Load required assemblies for Windows Forms and Drawing
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -157,20 +165,55 @@ function Initialize-Logging {
 }
 
 function Write-Log {
+    <#
+    .SYNOPSIS
+        Writes a log entry with configurable verbosity levels
+    .DESCRIPTION
+        Logs messages based on the configured verbosity level:
+        - "Minimal": Only ERROR messages are logged
+        - "Normal": ERROR and SUCCESS messages are logged (default)
+        - "Verbose": All messages (INFO, WARNING, ERROR, SUCCESS) are logged
+        This addresses LOW-002 security finding by allowing administrators to
+        reduce the amount of sensitive operation data stored in logs.
+    .PARAMETER Message
+        The message to log
+    .PARAMETER Level
+        The severity level of the message
+    #>
     param(
         [string]$Message,
         [ValidateSet("INFO", "WARNING", "ERROR", "SUCCESS")]
         [string]$Level = "INFO"
     )
 
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp] [$Level] $Message"
+    # Determine if this message should be logged based on verbosity setting
+    $shouldLog = $false
+    switch ($script:LogVerbosity) {
+        "Minimal" {
+            # Only log errors
+            $shouldLog = ($Level -eq "ERROR")
+        }
+        "Normal" {
+            # Log errors and success messages
+            $shouldLog = ($Level -eq "ERROR" -or $Level -eq "SUCCESS")
+        }
+        "Verbose" {
+            # Log everything
+            $shouldLog = $true
+        }
+        default {
+            # Default to Normal behavior
+            $shouldLog = ($Level -eq "ERROR" -or $Level -eq "SUCCESS")
+        }
+    }
 
-    if ($script:LogFile) {
+    if ($shouldLog -and $script:LogFile) {
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $logEntry = "[$timestamp] [$Level] $Message"
         Add-Content -Path $script:LogFile -Value $logEntry -ErrorAction SilentlyContinue
     }
 
-    # Also update the status in the GUI if available
+    # Always update the status in the GUI if available (regardless of log verbosity)
     if ($script:StatusLabel) {
         $script:StatusLabel.Text = $Message
         [System.Windows.Forms.Application]::DoEvents()
@@ -868,6 +911,11 @@ function Grant-BulkPermissionsToUser {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($users.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
@@ -1007,6 +1055,11 @@ function Grant-BulkPermissionsToTitle {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($users.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
@@ -1209,6 +1262,11 @@ function Remove-BulkPermissionsFromUser {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($users.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
@@ -1346,6 +1404,11 @@ function Remove-BulkPermissionsFromTitle {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $users.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($users.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
@@ -1736,6 +1799,11 @@ function Grant-BulkCSVPermissions {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($csvData.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
@@ -1887,6 +1955,11 @@ function Remove-BulkCSVPermissions {
             }
 
             Update-ProgressBar -Value ($i + 1) -Maximum $csvData.Count
+
+            # Rate limiting to prevent Microsoft 365 throttling (LOW-003 mitigation)
+            if ($i -lt ($csvData.Count - 1)) {
+                Start-Sleep -Milliseconds $script:BulkOperationDelayMs
+            }
         }
 
         Update-ResultsLog "-----------------------------------" "Info"
