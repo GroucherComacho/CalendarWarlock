@@ -31,19 +31,19 @@ Add-Type -AssemblyName System.Drawing
 # Theme Configurations
 $script:Themes = @{
     Dark = @{
-        FormBackground = [System.Drawing.Color]::FromArgb(17, 17, 27)
-        CardBackground = [System.Drawing.Color]::FromArgb(30, 30, 46)
-        HeaderBackground = [System.Drawing.Color]::FromArgb(137, 180, 250)
-        HeaderText = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        FormBackground = [System.Drawing.Color]::FromArgb(45, 41, 30)
+        CardBackground = [System.Drawing.Color]::FromArgb(55, 51, 40)
+        HeaderBackground = [System.Drawing.Color]::FromArgb(111, 87, 19)
+        HeaderText = [System.Drawing.Color]::FromArgb(230, 220, 200)
         PrimaryText = [System.Drawing.Color]::FromArgb(205, 214, 244)
         SecondaryText = [System.Drawing.Color]::FromArgb(147, 153, 178)
-        PrimaryButton = [System.Drawing.Color]::FromArgb(137, 180, 250)
-        SecondaryButton = [System.Drawing.Color]::FromArgb(180, 190, 254)
-        DisabledButton = [System.Drawing.Color]::FromArgb(88, 91, 112)
-        RemoveButton = [System.Drawing.Color]::FromArgb(45, 45, 60)
-        ButtonText = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        PrimaryButton = [System.Drawing.Color]::FromArgb(80, 118, 23)
+        SecondaryButton = [System.Drawing.Color]::FromArgb(118, 153, 27)
+        DisabledButton = [System.Drawing.Color]::FromArgb(100, 61, 29)
+        RemoveButton = [System.Drawing.Color]::FromArgb(111, 51, 23)
+        ButtonText = [System.Drawing.Color]::FromArgb(230, 220, 200)
         ButtonTextLight = [System.Drawing.Color]::FromArgb(205, 214, 244)
-        ResultsBackground = [System.Drawing.Color]::FromArgb(17, 17, 27)
+        ResultsBackground = [System.Drawing.Color]::FromArgb(45, 41, 30)
         ResultsText = [System.Drawing.Color]::FromArgb(148, 226, 213)
         ToggleText = "Light"
     }
