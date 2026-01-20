@@ -2033,18 +2033,28 @@ function Build-MainForm {
     $script:HeaderPanel.Size = New-Object System.Drawing.Size(700, 75)
     $script:HeaderPanel.BackColor = $script:Themes[$script:CurrentTheme].HeaderBackground
 
+    # Logo PictureBox
+    $script:LogoPictureBox = New-Object System.Windows.Forms.PictureBox
+    $script:LogoPictureBox.Location = New-Object System.Drawing.Point(10, 5)
+    $script:LogoPictureBox.Size = New-Object System.Drawing.Size(65, 65)
+    $script:LogoPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $logoPath = Join-Path (Split-Path -Parent $script:ScriptPath) "icon.png"
+    if (Test-Path $logoPath) {
+        $script:LogoPictureBox.Image = [System.Drawing.Image]::FromFile($logoPath)
+    }
+
     $script:TitleLabel = New-Object System.Windows.Forms.Label
     $script:TitleLabel.Text = "CalendarWarlock"
     $script:TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
     $script:TitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:TitleLabel.Location = New-Object System.Drawing.Point(15, 8)
+    $script:TitleLabel.Location = New-Object System.Drawing.Point(85, 8)
     $script:TitleLabel.AutoSize = $true
 
     $script:SubtitleLabel = New-Object System.Windows.Forms.Label
     $script:SubtitleLabel.Text = "Exchange Online Bulk Calendar Permissions Manager"
     $script:SubtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:SubtitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(20, 42)
+    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(90, 42)
     $script:SubtitleLabel.AutoSize = $true
 
     # Theme Toggle Button
@@ -2059,7 +2069,7 @@ function Build-MainForm {
     $script:ThemeToggleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:ThemeToggleButton.Add_Click({ Toggle-Theme })
 
-    $script:HeaderPanel.Controls.AddRange(@($script:TitleLabel, $script:SubtitleLabel, $script:ThemeToggleButton))
+    $script:HeaderPanel.Controls.AddRange(@($script:LogoPictureBox, $script:TitleLabel, $script:SubtitleLabel, $script:ThemeToggleButton))
 
     # Connection Group
     $script:ConnectionGroup = New-Object System.Windows.Forms.GroupBox
