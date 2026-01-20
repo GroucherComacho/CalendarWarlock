@@ -1,166 +1,131 @@
 # CalendarWarlock
 
-A secure, easy-to-use GUI tool for managing Exchange Online calendar permissions in bulk by job title.
+**Manage Exchange Online calendar permissions in bulk - no PowerShell expertise required.**
 
-## Features
+CalendarWarlock is a Windows GUI application that simplifies granting and removing calendar permissions across your organization. Instead of running complex PowerShell commands, use a simple point-and-click interface to manage permissions by job title or department.
 
-- **Bulk Permission by Job Title**: Grant calendar permissions to multiple users based on their job title
-- **Two Bulk Operations**:
-  1. Grant a single user access to all calendars of users with a specific job title
-  2. Grant all users with a specific job title access to a single user's calendar
-- **Simple GUI Interface**: No command-line knowledge required
-- **Modern Authentication**: Uses Microsoft's modern authentication (supports MFA)
-- **Secure**: No credentials stored locally; uses interactive authentication
-- **Comprehensive Logging**: All operations are logged for audit purposes
+## What Can CalendarWarlock Do?
 
-## Requirements
+- **Grant bulk permissions by job title** - Give an executive assistant access to all Director calendars with one click
+- **Grant bulk permissions by department** - Share a calendar with everyone in the Sales department
+- **Remove permissions in bulk** - Revoke access just as easily as granting it
+- **Process CSV files** - Handle large batches of permission changes via spreadsheet
 
-- Windows 10/11 or Windows Server 2016+
-- PowerShell 5.1 or higher
-- Required PowerShell Modules:
-  - `ExchangeOnlineManagement` (v3.0.0+)
-  - `Microsoft.Graph.Users` (v2.0.0+)
+## Quick Start
 
-## Installation
-
-### 1. Install Required PowerShell Modules
+### Step 1: Install Required Components
 
 Open PowerShell as Administrator and run:
 
 ```powershell
-# Install Exchange Online Management module
 Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force
-
-# Install Microsoft Graph module
 Install-Module -Name Microsoft.Graph -Scope CurrentUser -Force
 ```
 
-### 2. Download CalendarWarlock
+### Step 2: Launch CalendarWarlock
 
-Clone or download this repository to your local machine.
-
-### 3. Unblock Scripts (if needed)
-
-If you downloaded the files, you may need to unblock them:
-
-```powershell
-Get-ChildItem -Path "C:\Path\To\CalendarWarlock" -Recurse | Unblock-File
-```
-
-## Usage
-
-### Starting the Application
+Double-click `CalendarWarlock.bat` or run:
 
 ```powershell
 .\Start-CalendarWarlock.ps1
 ```
 
-Or run directly:
+### Step 3: Connect to Your Organization
 
-```powershell
-.\src\CalendarWarlock.ps1
-```
-
-### Connecting to Exchange Online
-
-1. Enter your organization domain (e.g., `contoso.onmicrosoft.com`)
+1. Enter your Microsoft 365 domain (e.g., `contoso.onmicrosoft.com`)
 2. Click **Connect**
-3. Sign in with your Microsoft 365 admin credentials
+3. Sign in with your admin credentials
 4. Complete MFA if prompted
 
-### Granting Bulk Permissions
+### Step 4: Start Managing Permissions
 
-#### Option 1: Grant a User Access to All Calendars of a Job Title
+Choose your operation type and follow the on-screen prompts.
 
-Use this when you want to give one person (e.g., an executive assistant) access to view/edit the calendars of everyone with a specific job title (e.g., all "Directors").
+## Common Use Cases
 
-1. Select the **Job Title** from the dropdown
-2. Enter the **Target User's email** (the person who will receive access)
-3. Select the desired **Permission Level**
-4. Click **"Grant User Access to All Calendars of Job Title"**
+### Give an Assistant Access to Executive Calendars
 
-#### Option 2: Grant All of a Job Title Access to a User's Calendar
+*Scenario: Your CEO's assistant needs to view and edit all Director calendars*
 
-Use this when you want everyone with a specific job title to have access to one person's calendar.
+1. Select **Job Title** mode
+2. Choose "Director" from the dropdown
+3. Enter the assistant's email address
+4. Select **Editor** permission level
+5. Click **Grant User Access to All Calendars of Job Title**
 
-1. Select the **Job Title** from the dropdown
-2. Enter the **Calendar Owner's email** (the person whose calendar will be shared)
-3. Select the desired **Permission Level**
-4. Click **"Grant All of Job Title Access to User's Calendar"**
+### Share a Meeting Room Calendar with a Department
 
-### Permission Levels
+*Scenario: Everyone in Engineering needs to see the main conference room calendar*
 
-| Level | Description |
-|-------|-------------|
-| Owner | Full control - read, create, modify, delete all items and manage permissions |
-| PublishingEditor | Create, read, modify, delete all items; create subfolders |
-| Editor | Create, read, modify, delete all items |
-| PublishingAuthor | Create, read items; modify, delete own items; create subfolders |
-| Author | Create, read items; modify, delete own items |
-| NonEditingAuthor | Create, read items; delete own items |
-| Reviewer | Read items only (full details) |
-| Contributor | Create items only (cannot read) |
-| AvailabilityOnly | View free/busy time only |
-| LimitedDetails | View free/busy time with subject and location |
-| None | No access |
+1. Select **Department** mode
+2. Choose "Engineering" from the dropdown
+3. Enter the conference room's email address
+4. Select **Reviewer** permission level
+5. Click **Grant All of Department Access to User's Calendar**
 
-## Required Permissions
+### Remove a Former Employee's Calendar Access
 
-The user running CalendarWarlock needs the following permissions:
+*Scenario: A manager left and you need to remove their access to team calendars*
 
-### Exchange Online
-- Exchange Administrator role, or
-- Recipient Management role (for calendar permissions)
+1. Select **Job Title** or **Department** mode
+2. Enter the former employee's email
+3. Click the appropriate **Remove** button
 
-### Microsoft Graph (Azure AD)
-- `User.Read.All` - To read user profiles and job titles
-- `Directory.Read.All` - To query directory information
+## Permission Levels Explained
 
-## Security Considerations
+| Level | What They Can Do |
+|-------|------------------|
+| **Owner** | Full control - read, edit, delete everything, manage permissions |
+| **Editor** | Read, create, edit, delete all items |
+| **Reviewer** | Read-only access (view full details) |
+| **AvailabilityOnly** | See only free/busy status |
+| **LimitedDetails** | See free/busy plus meeting subject and location |
+| **None** | Remove all access |
 
-- **No Stored Credentials**: CalendarWarlock uses interactive modern authentication and never stores credentials
-- **MFA Support**: Fully compatible with Multi-Factor Authentication
-- **Audit Logging**: All operations are logged to the `Logs` folder with timestamps
-- **Confirmation Prompts**: Bulk operations require explicit user confirmation
-- **Session Management**: Properly disconnects sessions when closing the application
+*For more permission levels, see the [full documentation](docs/USAGE.md).*
 
-## Project Structure
+## Requirements
 
-```
-CalendarWarlock/
-├── src/
-│   ├── CalendarWarlock.ps1          # Main GUI application
-│   └── Modules/
-│       ├── ExchangeOperations.psm1  # Exchange Online operations
-│       └── AzureADOperations.psm1   # Azure AD/Graph operations
-├── docs/
-│   └── USAGE.md                     # Detailed usage guide
-├── Start-CalendarWarlock.ps1        # Launcher script
-└── README.md                        # This file
-```
+- **Windows 10/11** or Windows Server 2016+
+- **PowerShell 5.1** or higher
+- **Microsoft 365 Admin Permissions**:
+  - Exchange Administrator role (or Recipient Management)
+  - User.Read.All and Directory.Read.All Graph permissions
 
 ## Troubleshooting
 
-### "Missing required PowerShell modules"
-Install the required modules using the commands in the Installation section.
+**"Missing required PowerShell modules"**
+Run the installation commands in Step 1 above.
 
-### "Failed to connect to Exchange Online"
-- Verify you have the correct permissions
-- Check your organization domain is correct
-- Ensure your account has Exchange Admin or Recipient Management role
+**"Failed to connect"**
+- Verify your domain is correct
+- Ensure you have the required admin permissions
+- Check your internet connection
 
-### "Failed to connect to Microsoft Graph"
-- Consent to the required permissions when prompted
-- Verify you have User.Read.All and Directory.Read.All permissions
+**"No job titles/departments found"**
+Your Azure AD user profiles may not have these fields populated. Contact your IT admin.
 
-### "No job titles found"
-- Ensure users in your organization have job titles populated in Azure AD
-- Check your Microsoft Graph connection is active
+## Security
+
+CalendarWarlock is designed with security in mind:
+
+- Your credentials are never stored locally
+- Full MFA support
+- All operations are logged for audit purposes
+- Comprehensive input validation
+
+See [SECURITY.md](SECURITY.md) for details on security measures and testing.
+
+## Documentation
+
+- [Detailed Usage Guide](docs/USAGE.md) - Step-by-step instructions for all features
+- [Security Information](SECURITY.md) - Security features and assessment results
+- [Security Assessment](SECURITY_ASSESSMENT.md) - Technical security audit report
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - See [LICENSE](LICENSE) for details.
 
-## Contributing
+## Support
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+For issues or feature requests, visit the [GitHub Issues](https://github.com/GroucherComacho/CalendarWarlock/issues) page.
