@@ -77,6 +77,10 @@
         <File Id="IconIco" Source="..\icon.ico" KeyPath="yes" />
       </Component>
 
+      <Component Id="IconPngFile" Guid="E6F7A8B9-C0D1-9E0F-3A4B-5C6D7E8F9A0B">
+        <File Id="IconPng" Source="..\icon.png" KeyPath="yes" />
+      </Component>
+
     </ComponentGroup>
 
     <!-- Source files -->

@@ -28,6 +28,18 @@ $script:CurrentTheme = "Dark"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Hide the console window when GUI launches
+Add-Type -Name Window -Namespace Console -MemberDefinition '
+    [DllImport("Kernel32.dll")]
+    public static extern IntPtr GetConsoleWindow();
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
+'
+$consolePtr = [Console.Window]::GetConsoleWindow()
+if ($consolePtr -ne [IntPtr]::Zero) {
+    [void][Console.Window]::ShowWindow($consolePtr, 0) # 0 = SW_HIDE
+}
+
 # Theme Configurations
 $script:Themes = @{
     Dark = @{
@@ -2014,7 +2026,7 @@ function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
     $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
-    $script:MainForm.Size = New-Object System.Drawing.Size(700, 850)
+    $script:MainForm.Size = New-Object System.Drawing.Size(700, 885)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
     $script:MainForm.MaximizeBox = $false
@@ -2030,13 +2042,13 @@ function Build-MainForm {
     # Header Panel
     $script:HeaderPanel = New-Object System.Windows.Forms.Panel
     $script:HeaderPanel.Location = New-Object System.Drawing.Point(0, 0)
-    $script:HeaderPanel.Size = New-Object System.Drawing.Size(700, 75)
+    $script:HeaderPanel.Size = New-Object System.Drawing.Size(700, 110)
     $script:HeaderPanel.BackColor = $script:Themes[$script:CurrentTheme].HeaderBackground
 
     # Logo PictureBox
     $script:LogoPictureBox = New-Object System.Windows.Forms.PictureBox
-    $script:LogoPictureBox.Location = New-Object System.Drawing.Point(10, 5)
-    $script:LogoPictureBox.Size = New-Object System.Drawing.Size(65, 65)
+    $script:LogoPictureBox.Location = New-Object System.Drawing.Point(8, 6)
+    $script:LogoPictureBox.Size = New-Object System.Drawing.Size(98, 98)
     $script:LogoPictureBox.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
     $logoPath = Join-Path (Split-Path -Parent $script:ScriptPath) "icon.png"
     if (Test-Path $logoPath) {
@@ -2047,21 +2059,21 @@ function Build-MainForm {
     $script:TitleLabel.Text = "CalendarWarlock"
     $script:TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
     $script:TitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:TitleLabel.Location = New-Object System.Drawing.Point(85, 8)
+    $script:TitleLabel.Location = New-Object System.Drawing.Point(115, 25)
     $script:TitleLabel.AutoSize = $true
 
     $script:SubtitleLabel = New-Object System.Windows.Forms.Label
     $script:SubtitleLabel.Text = "Exchange Online Bulk Calendar Permissions Manager"
     $script:SubtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:SubtitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(90, 42)
+    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(120, 60)
     $script:SubtitleLabel.AutoSize = $true
 
     # Theme Toggle Button
     $script:ThemeToggleButton = New-Object System.Windows.Forms.Button
     $script:ThemeToggleButton.Text = "Light"
     $script:ThemeToggleButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
-    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(620, 22)
+    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(620, 40)
     $script:ThemeToggleButton.Size = New-Object System.Drawing.Size(60, 30)
     $script:ThemeToggleButton.BackColor = $script:Themes[$script:CurrentTheme].FormBackground
     $script:ThemeToggleButton.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2074,7 +2086,7 @@ function Build-MainForm {
     # Connection Group
     $script:ConnectionGroup = New-Object System.Windows.Forms.GroupBox
     $script:ConnectionGroup.Text = "Connection"
-    $script:ConnectionGroup.Location = New-Object System.Drawing.Point(15, 85)
+    $script:ConnectionGroup.Location = New-Object System.Drawing.Point(15, 120)
     $script:ConnectionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:ConnectionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ConnectionGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2120,7 +2132,7 @@ function Build-MainForm {
     # Method Selection Group
     $script:MethodGroup = New-Object System.Windows.Forms.GroupBox
     $script:MethodGroup.Text = "Method Selection"
-    $script:MethodGroup.Location = New-Object System.Drawing.Point(15, 165)
+    $script:MethodGroup.Location = New-Object System.Drawing.Point(15, 200)
     $script:MethodGroup.Size = New-Object System.Drawing.Size(655, 160)
     $script:MethodGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:MethodGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2256,7 +2268,7 @@ function Build-MainForm {
     # Target User Group
     $script:TargetUserGroup = New-Object System.Windows.Forms.GroupBox
     $script:TargetUserGroup.Text = "Target User"
-    $script:TargetUserGroup.Location = New-Object System.Drawing.Point(15, 335)
+    $script:TargetUserGroup.Location = New-Object System.Drawing.Point(15, 370)
     $script:TargetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:TargetUserGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:TargetUserGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2288,7 +2300,7 @@ function Build-MainForm {
     # Permission Level Group
     $script:PermissionGroup = New-Object System.Windows.Forms.GroupBox
     $script:PermissionGroup.Text = "Permission Level"
-    $script:PermissionGroup.Location = New-Object System.Drawing.Point(15, 415)
+    $script:PermissionGroup.Location = New-Object System.Drawing.Point(15, 450)
     $script:PermissionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:PermissionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:PermissionGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2330,7 +2342,7 @@ function Build-MainForm {
     # Actions Group
     $script:ActionsGroup = New-Object System.Windows.Forms.GroupBox
     $script:ActionsGroup.Text = "Actions"
-    $script:ActionsGroup.Location = New-Object System.Drawing.Point(15, 495)
+    $script:ActionsGroup.Location = New-Object System.Drawing.Point(15, 530)
     $script:ActionsGroup.Size = New-Object System.Drawing.Size(655, 120)
     $script:ActionsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ActionsGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
@@ -2416,7 +2428,7 @@ function Build-MainForm {
     # Results Group
     $script:ResultsGroup = New-Object System.Windows.Forms.GroupBox
     $script:ResultsGroup.Text = "Results Log"
-    $script:ResultsGroup.Location = New-Object System.Drawing.Point(15, 625)
+    $script:ResultsGroup.Location = New-Object System.Drawing.Point(15, 660)
     $script:ResultsGroup.Size = New-Object System.Drawing.Size(655, 140)
     $script:ResultsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ResultsGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
