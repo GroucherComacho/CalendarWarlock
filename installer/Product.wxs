@@ -171,11 +171,11 @@
     </Feature>
 
     <!-- ==================== UI ==================== -->
-    <!-- Minimal UI - just progress bar -->
-    <UIRef Id="WixUI_Minimal" />
+    <!-- Full UI with license agreement, feature selection, and install directory -->
+    <UIRef Id="WixUI_Mondo" />
 
-    <!-- License (optional - comment out if no license file) -->
-    <!-- <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" /> -->
+    <!-- License agreement file -->
+    <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" />
 
   </Product>
 </Wix>
