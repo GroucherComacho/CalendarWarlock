@@ -40,41 +40,57 @@ if ($consolePtr -ne [IntPtr]::Zero) {
     [void][Console.Window]::ShowWindow($consolePtr, 0) # 0 = SW_HIDE
 }
 
-# Theme Configurations
+# Theme Configurations - Mystical Warlock Themes
 $script:Themes = @{
     Dark = @{
-        FormBackground = [System.Drawing.Color]::FromArgb(45, 41, 30)
-        CardBackground = [System.Drawing.Color]::FromArgb(55, 51, 40)
-        HeaderBackground = [System.Drawing.Color]::FromArgb(111, 87, 19)
-        HeaderText = [System.Drawing.Color]::FromArgb(230, 220, 200)
-        PrimaryText = [System.Drawing.Color]::FromArgb(205, 214, 244)
-        SecondaryText = [System.Drawing.Color]::FromArgb(147, 153, 178)
-        PrimaryButton = [System.Drawing.Color]::FromArgb(80, 118, 23)
-        SecondaryButton = [System.Drawing.Color]::FromArgb(118, 153, 27)
-        DisabledButton = [System.Drawing.Color]::FromArgb(100, 61, 29)
-        RemoveButton = [System.Drawing.Color]::FromArgb(111, 51, 23)
-        ButtonText = [System.Drawing.Color]::FromArgb(230, 220, 200)
-        ButtonTextLight = [System.Drawing.Color]::FromArgb(205, 214, 244)
-        ResultsBackground = [System.Drawing.Color]::FromArgb(45, 41, 30)
-        ResultsText = [System.Drawing.Color]::FromArgb(148, 226, 213)
-        ToggleText = "Light"
+        # Warlock's Shadow - Deep mystical purple/violet theme
+        FormBackground = [System.Drawing.Color]::FromArgb(15, 12, 25)           # Deep void black-purple
+        CardBackground = [System.Drawing.Color]::FromArgb(25, 20, 40)           # Dark mystical purple
+        HeaderBackground = [System.Drawing.Color]::FromArgb(45, 25, 70)         # Rich purple header
+        HeaderText = [System.Drawing.Color]::FromArgb(220, 200, 255)            # Ethereal lavender
+        PrimaryText = [System.Drawing.Color]::FromArgb(200, 190, 230)           # Soft magical white-purple
+        SecondaryText = [System.Drawing.Color]::FromArgb(130, 120, 170)         # Muted arcane purple
+        PrimaryButton = [System.Drawing.Color]::FromArgb(100, 60, 180)          # Arcane violet
+        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 140, 160)        # Mystical teal
+        DisabledButton = [System.Drawing.Color]::FromArgb(60, 50, 80)           # Shadowed purple
+        RemoveButton = [System.Drawing.Color]::FromArgb(140, 40, 70)            # Blood magic crimson
+        ButtonText = [System.Drawing.Color]::FromArgb(240, 235, 255)            # Pure ethereal white
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(200, 190, 230)       # Soft magical text
+        ResultsBackground = [System.Drawing.Color]::FromArgb(18, 15, 30)        # Deep void
+        ResultsText = [System.Drawing.Color]::FromArgb(120, 220, 200)           # Spectral teal glow
+        InputBackground = [System.Drawing.Color]::FromArgb(30, 25, 50)          # Input field dark purple
+        InputText = [System.Drawing.Color]::FromArgb(200, 190, 230)             # Input text
+        AccentGlow = [System.Drawing.Color]::FromArgb(180, 100, 255)            # Magical purple glow
+        SuccessColor = [System.Drawing.Color]::FromArgb(80, 200, 120)           # Enchanted green
+        WarningColor = [System.Drawing.Color]::FromArgb(255, 180, 80)           # Amber warning
+        ErrorColor = [System.Drawing.Color]::FromArgb(220, 60, 90)              # Crimson error
+        BorderColor = [System.Drawing.Color]::FromArgb(80, 60, 120)             # Subtle purple border
+        ToggleText = "Arcane"
     }
     Light = @{
-        FormBackground = [System.Drawing.Color]::FromArgb(245, 245, 245)
-        CardBackground = [System.Drawing.Color]::FromArgb(255, 255, 255)
-        HeaderBackground = [System.Drawing.Color]::FromArgb(70, 70, 80)
-        HeaderText = [System.Drawing.Color]::FromArgb(255, 255, 255)
-        PrimaryText = [System.Drawing.Color]::FromArgb(30, 30, 30)
-        SecondaryText = [System.Drawing.Color]::FromArgb(100, 100, 100)
-        PrimaryButton = [System.Drawing.Color]::FromArgb(70, 130, 180)
-        SecondaryButton = [System.Drawing.Color]::FromArgb(100, 149, 237)
-        DisabledButton = [System.Drawing.Color]::FromArgb(180, 180, 180)
-        RemoveButton = [System.Drawing.Color]::FromArgb(220, 220, 220)
-        ButtonText = [System.Drawing.Color]::FromArgb(255, 255, 255)
-        ButtonTextLight = [System.Drawing.Color]::FromArgb(30, 30, 30)
-        ResultsBackground = [System.Drawing.Color]::FromArgb(255, 255, 255)
-        ResultsText = [System.Drawing.Color]::FromArgb(70, 130, 180)
-        ToggleText = "Dark"
+        # Arcane Sanctum - Mystical light theme with magical accents
+        FormBackground = [System.Drawing.Color]::FromArgb(240, 238, 248)        # Soft lavender white
+        CardBackground = [System.Drawing.Color]::FromArgb(252, 250, 255)        # Pure mystical white
+        HeaderBackground = [System.Drawing.Color]::FromArgb(70, 45, 110)        # Deep amethyst
+        HeaderText = [System.Drawing.Color]::FromArgb(255, 250, 255)            # Pure white
+        PrimaryText = [System.Drawing.Color]::FromArgb(35, 25, 55)              # Dark purple text
+        SecondaryText = [System.Drawing.Color]::FromArgb(100, 85, 130)          # Muted purple
+        PrimaryButton = [System.Drawing.Color]::FromArgb(110, 70, 190)          # Vivid purple
+        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 150, 170)        # Mystical teal
+        DisabledButton = [System.Drawing.Color]::FromArgb(200, 195, 210)        # Light gray-purple
+        RemoveButton = [System.Drawing.Color]::FromArgb(180, 60, 90)            # Rose crimson
+        ButtonText = [System.Drawing.Color]::FromArgb(255, 255, 255)            # Pure white
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(35, 25, 55)          # Dark text for light buttons
+        ResultsBackground = [System.Drawing.Color]::FromArgb(248, 246, 255)     # Soft white-purple
+        ResultsText = [System.Drawing.Color]::FromArgb(50, 120, 130)            # Deep teal
+        InputBackground = [System.Drawing.Color]::FromArgb(255, 255, 255)       # White input
+        InputText = [System.Drawing.Color]::FromArgb(35, 25, 55)                # Dark text
+        AccentGlow = [System.Drawing.Color]::FromArgb(140, 80, 200)             # Purple accent
+        SuccessColor = [System.Drawing.Color]::FromArgb(60, 160, 100)           # Forest green
+        WarningColor = [System.Drawing.Color]::FromArgb(200, 140, 50)           # Amber
+        ErrorColor = [System.Drawing.Color]::FromArgb(180, 50, 70)              # Crimson
+        BorderColor = [System.Drawing.Color]::FromArgb(180, 170, 200)           # Soft purple border
+        ToggleText = "Shadow"
     }
 }
 #endregion
@@ -479,8 +495,8 @@ function Connect-Services {
         Update-ResultsLog $graphResult.Message "Success"
 
         $script:IsConnected = $true
-        $script:ConnectButton.Text = "Disconnect"
-        $script:StatusLabel.Text = "Connected to $Organization"
+        $script:ConnectButton.Text = "Dismiss"
+        $script:StatusLabel.Text = "Portal open to $Organization"
 
         Update-ResultsLog "Successfully connected to all services!" "Success"
         Write-Log "Successfully connected to $Organization" "SUCCESS"
@@ -516,8 +532,8 @@ function Disconnect-Services {
         Disconnect-GraphSession | Out-Null
 
         $script:IsConnected = $false
-        $script:ConnectButton.Text = "Connect"
-        $script:StatusLabel.Text = "Disconnected"
+        $script:ConnectButton.Text = "Summon"
+        $script:StatusLabel.Text = "Portal sealed"
         $script:JobTitleComboBox.Items.Clear()
         $script:DepartmentComboBox.Items.Clear()
 
@@ -1971,41 +1987,97 @@ function Apply-Theme {
     # Main Form
     $script:MainForm.BackColor = $theme.FormBackground
 
-    # Header Panel
+    # Header Panel with magical gradient effect
     $script:HeaderPanel.BackColor = $theme.HeaderBackground
     $script:TitleLabel.ForeColor = $theme.HeaderText
     $script:SubtitleLabel.ForeColor = $theme.HeaderText
     $script:ThemeToggleButton.Text = $theme.ToggleText
-    $script:ThemeToggleButton.BackColor = $theme.FormBackground
+    $script:ThemeToggleButton.BackColor = $theme.CardBackground
     $script:ThemeToggleButton.ForeColor = $theme.PrimaryText
+    $script:ThemeToggleButton.FlatAppearance.BorderColor = $theme.BorderColor
+    $script:ThemeToggleButton.FlatAppearance.BorderSize = 1
 
-    # Group Boxes
+    # Group Boxes with mystical styling
     foreach ($group in @($script:ConnectionGroup, $script:MethodGroup, $script:TargetUserGroup, $script:PermissionGroup, $script:ActionsGroup, $script:ResultsGroup)) {
         $group.BackColor = $theme.CardBackground
         $group.ForeColor = $theme.PrimaryText
     }
 
-    # Primary Action Buttons
+    # Style all TextBoxes with warlock theme
+    foreach ($textBox in @($script:OrganizationTextBox, $script:TargetUserTextBox, $script:CalendarOwnerTextBox, $script:SingleUserTextBox)) {
+        if ($null -ne $textBox) {
+            $textBox.BackColor = $theme.InputBackground
+            $textBox.ForeColor = $theme.InputText
+            $textBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+        }
+    }
+
+    # Style ComboBoxes
+    foreach ($comboBox in @($script:JobTitleComboBox, $script:DepartmentComboBox, $script:PermissionComboBox)) {
+        if ($null -ne $comboBox) {
+            $comboBox.BackColor = $theme.InputBackground
+            $comboBox.ForeColor = $theme.InputText
+        }
+    }
+
+    # Primary Action Buttons - Arcane power
     $script:ConnectButton.BackColor = $theme.PrimaryButton
     $script:ConnectButton.ForeColor = $theme.ButtonText
+    $script:ConnectButton.FlatAppearance.BorderColor = $theme.AccentGlow
+    $script:ConnectButton.FlatAppearance.BorderSize = 1
+    $script:ConnectButton.FlatAppearance.MouseOverBackColor = [System.Drawing.Color]::FromArgb(
+        [Math]::Min(255, $theme.PrimaryButton.R + 25),
+        [Math]::Min(255, $theme.PrimaryButton.G + 25),
+        [Math]::Min(255, $theme.PrimaryButton.B + 25)
+    )
+
     $script:GrantToUserButton.BackColor = $theme.PrimaryButton
     $script:GrantToUserButton.ForeColor = $theme.ButtonText
+    $script:GrantToUserButton.FlatAppearance.BorderColor = $theme.AccentGlow
+    $script:GrantToUserButton.FlatAppearance.BorderSize = 1
+
     $script:GrantToTitleButton.BackColor = $theme.SecondaryButton
     $script:GrantToTitleButton.ForeColor = $theme.ButtonText
+    $script:GrantToTitleButton.FlatAppearance.BorderColor = $theme.AccentGlow
+    $script:GrantToTitleButton.FlatAppearance.BorderSize = 1
 
-    # Secondary/Remove Buttons
+    # Secondary/Remove Buttons - Blood magic
     $script:RemoveFromUserButton.BackColor = $theme.DisabledButton
     $script:RemoveFromUserButton.ForeColor = $theme.ButtonTextLight
-    $script:RemoveFromTitleButton.BackColor = $theme.RemoveButton
-    $script:RemoveFromTitleButton.ForeColor = $theme.ButtonTextLight
+    $script:RemoveFromUserButton.FlatAppearance.BorderColor = $theme.BorderColor
+    $script:RemoveFromUserButton.FlatAppearance.BorderSize = 1
 
-    # Results TextBox
+    $script:RemoveFromTitleButton.BackColor = $theme.RemoveButton
+    $script:RemoveFromTitleButton.ForeColor = $theme.ButtonText
+    $script:RemoveFromTitleButton.FlatAppearance.BorderColor = $theme.ErrorColor
+    $script:RemoveFromTitleButton.FlatAppearance.BorderSize = 1
+
+    # Style utility buttons
+    foreach ($btn in @($script:SearchUserButton, $script:GetPermissionsButton, $script:RefreshButton, $script:BrowseCSVButton, $script:DownloadTemplateButton)) {
+        if ($null -ne $btn) {
+            $btn.BackColor = $theme.CardBackground
+            $btn.ForeColor = $theme.PrimaryText
+            $btn.FlatStyle = "Flat"
+            $btn.FlatAppearance.BorderColor = $theme.BorderColor
+            $btn.FlatAppearance.BorderSize = 1
+        }
+    }
+
+    # Results TextBox - Spectral glow
     $script:ResultsTextBox.BackColor = $theme.ResultsBackground
     $script:ResultsTextBox.ForeColor = $theme.ResultsText
+    $script:ResultsTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 
     # Secondary text labels
     $script:CSVFileLabel.ForeColor = $theme.SecondaryText
     $script:PermissionDescLabel.ForeColor = $theme.SecondaryText
+
+    # Radio buttons styling
+    foreach ($radio in @($script:SingleRadio, $script:JobTitleRadio, $script:DepartmentRadio, $script:BulkCSVRadio)) {
+        if ($null -ne $radio) {
+            $radio.ForeColor = $theme.PrimaryText
+        }
+    }
 
     # Refresh the form
     $script:MainForm.Refresh()
@@ -2025,7 +2097,7 @@ function Toggle-Theme {
 function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
-    $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permissions Manager"
+    $script:MainForm.Text = "CalendarWarlock - Arcane Calendar Conjuration"
     $script:MainForm.Size = New-Object System.Drawing.Size(700, 885)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
@@ -2057,35 +2129,37 @@ function Build-MainForm {
 
     $script:TitleLabel = New-Object System.Windows.Forms.Label
     $script:TitleLabel.Text = "CalendarWarlock"
-    $script:TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
+    $script:TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 20, [System.Drawing.FontStyle]::Bold)
     $script:TitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:TitleLabel.Location = New-Object System.Drawing.Point(115, 25)
+    $script:TitleLabel.Location = New-Object System.Drawing.Point(115, 22)
     $script:TitleLabel.AutoSize = $true
 
     $script:SubtitleLabel = New-Object System.Windows.Forms.Label
-    $script:SubtitleLabel.Text = "Exchange Online Bulk Calendar Permissions Manager"
-    $script:SubtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+    $script:SubtitleLabel.Text = "Conjure Calendar Permissions with Arcane Power"
+    $script:SubtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
     $script:SubtitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
-    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(120, 60)
+    $script:SubtitleLabel.Location = New-Object System.Drawing.Point(120, 58)
     $script:SubtitleLabel.AutoSize = $true
 
-    # Theme Toggle Button
+    # Theme Toggle Button - Mystical realm switcher
     $script:ThemeToggleButton = New-Object System.Windows.Forms.Button
-    $script:ThemeToggleButton.Text = "Light"
-    $script:ThemeToggleButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
-    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(620, 40)
-    $script:ThemeToggleButton.Size = New-Object System.Drawing.Size(60, 30)
-    $script:ThemeToggleButton.BackColor = $script:Themes[$script:CurrentTheme].FormBackground
+    $script:ThemeToggleButton.Text = $script:Themes[$script:CurrentTheme].ToggleText
+    $script:ThemeToggleButton.Font = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(610, 38)
+    $script:ThemeToggleButton.Size = New-Object System.Drawing.Size(70, 32)
+    $script:ThemeToggleButton.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ThemeToggleButton.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
     $script:ThemeToggleButton.FlatStyle = "Flat"
+    $script:ThemeToggleButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].BorderColor
+    $script:ThemeToggleButton.FlatAppearance.BorderSize = 1
     $script:ThemeToggleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:ThemeToggleButton.Add_Click({ Toggle-Theme })
 
     $script:HeaderPanel.Controls.AddRange(@($script:LogoPictureBox, $script:TitleLabel, $script:SubtitleLabel, $script:ThemeToggleButton))
 
-    # Connection Group
+    # Connection Group - Portal to the Realm
     $script:ConnectionGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ConnectionGroup.Text = "Connection"
+    $script:ConnectionGroup.Text = "Realm Portal"
     $script:ConnectionGroup.Location = New-Object System.Drawing.Point(15, 120)
     $script:ConnectionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:ConnectionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2102,12 +2176,16 @@ function Build-MainForm {
     try { $script:OrganizationTextBox.PlaceholderText = "contoso.onmicrosoft.com" } catch {}
 
     $script:ConnectButton = New-Object System.Windows.Forms.Button
-    $script:ConnectButton.Text = "Connect"
-    $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 25)
-    $script:ConnectButton.Size = New-Object System.Drawing.Size(100, 28)
+    $script:ConnectButton.Text = "Summon"
+    $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 23)
+    $script:ConnectButton.Size = New-Object System.Drawing.Size(110, 32)
     $script:ConnectButton.BackColor = $script:Themes[$script:CurrentTheme].PrimaryButton
     $script:ConnectButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonText
+    $script:ConnectButton.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
     $script:ConnectButton.FlatStyle = "Flat"
+    $script:ConnectButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].AccentGlow
+    $script:ConnectButton.FlatAppearance.BorderSize = 1
+    $script:ConnectButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:ConnectButton.Add_Click({
         if ($script:IsConnected) {
             Disconnect-Services
@@ -2129,9 +2207,9 @@ function Build-MainForm {
 
     $script:ConnectionGroup.Controls.AddRange(@($orgLabel, $script:OrganizationTextBox, $script:ConnectButton))
 
-    # Method Selection Group
+    # Method Selection Group - Spell Selection
     $script:MethodGroup = New-Object System.Windows.Forms.GroupBox
-    $script:MethodGroup.Text = "Method Selection"
+    $script:MethodGroup.Text = "Spell Selection"
     $script:MethodGroup.Location = New-Object System.Drawing.Point(15, 200)
     $script:MethodGroup.Size = New-Object System.Drawing.Size(655, 160)
     $script:MethodGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2265,9 +2343,9 @@ function Build-MainForm {
         $script:CSVFileLabel, $script:BrowseCSVButton, $script:DownloadTemplateButton
     ))
 
-    # Target User Group
+    # Target User Group - Spell Target
     $script:TargetUserGroup = New-Object System.Windows.Forms.GroupBox
-    $script:TargetUserGroup.Text = "Target User"
+    $script:TargetUserGroup.Text = "Spell Target"
     $script:TargetUserGroup.Location = New-Object System.Drawing.Point(15, 370)
     $script:TargetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:TargetUserGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2297,9 +2375,9 @@ function Build-MainForm {
 
     $script:TargetUserGroup.Controls.AddRange(@($targetUserLabel, $script:TargetUserTextBox, $script:SearchUserButton, $script:GetPermissionsButton))
 
-    # Permission Level Group
+    # Permission Level Group - Power Level
     $script:PermissionGroup = New-Object System.Windows.Forms.GroupBox
-    $script:PermissionGroup.Text = "Permission Level"
+    $script:PermissionGroup.Text = "Power Level"
     $script:PermissionGroup.Location = New-Object System.Drawing.Point(15, 450)
     $script:PermissionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:PermissionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2339,21 +2417,25 @@ function Build-MainForm {
 
     $script:PermissionGroup.Controls.AddRange(@($permissionLabel, $script:PermissionComboBox, $script:PermissionDescLabel))
 
-    # Actions Group
+    # Actions Group - Cast Spells
     $script:ActionsGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ActionsGroup.Text = "Actions"
+    $script:ActionsGroup.Text = "Cast Spells"
     $script:ActionsGroup.Location = New-Object System.Drawing.Point(15, 530)
     $script:ActionsGroup.Size = New-Object System.Drawing.Size(655, 120)
     $script:ActionsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ActionsGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
-    $script:GrantToUserButton.Text = "Grant User Access to All Calendars of Selection"
+    $script:GrantToUserButton.Text = "Enchant User with Calendar Access"
     $script:GrantToUserButton.Location = New-Object System.Drawing.Point(15, 25)
-    $script:GrantToUserButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:GrantToUserButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:GrantToUserButton.BackColor = $script:Themes[$script:CurrentTheme].PrimaryButton
     $script:GrantToUserButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonText
+    $script:GrantToUserButton.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
     $script:GrantToUserButton.FlatStyle = "Flat"
+    $script:GrantToUserButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].AccentGlow
+    $script:GrantToUserButton.FlatAppearance.BorderSize = 1
+    $script:GrantToUserButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:GrantToUserButton.Add_Click({
         if ($script:SingleRadio.Checked) {
             Grant-SinglePermission
@@ -2367,12 +2449,16 @@ function Build-MainForm {
     })
 
     $script:GrantToTitleButton = New-Object System.Windows.Forms.Button
-    $script:GrantToTitleButton.Text = "Grant All of Selection Access to User's Calendar"
+    $script:GrantToTitleButton.Text = "Bestow Calendar Upon Selection"
     $script:GrantToTitleButton.Location = New-Object System.Drawing.Point(335, 25)
-    $script:GrantToTitleButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:GrantToTitleButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:GrantToTitleButton.BackColor = $script:Themes[$script:CurrentTheme].SecondaryButton
     $script:GrantToTitleButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonText
+    $script:GrantToTitleButton.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
     $script:GrantToTitleButton.FlatStyle = "Flat"
+    $script:GrantToTitleButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].AccentGlow
+    $script:GrantToTitleButton.FlatAppearance.BorderSize = 1
+    $script:GrantToTitleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:GrantToTitleButton.Add_Click({
         if ($script:SingleRadio.Checked) {
             Grant-SinglePermission
@@ -2386,12 +2472,16 @@ function Build-MainForm {
     })
 
     $script:RemoveFromUserButton = New-Object System.Windows.Forms.Button
-    $script:RemoveFromUserButton.Text = "Remove User Access from All Calendars of Selection"
-    $script:RemoveFromUserButton.Location = New-Object System.Drawing.Point(15, 70)
-    $script:RemoveFromUserButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:RemoveFromUserButton.Text = "Dispel User's Calendar Access"
+    $script:RemoveFromUserButton.Location = New-Object System.Drawing.Point(15, 72)
+    $script:RemoveFromUserButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:RemoveFromUserButton.BackColor = $script:Themes[$script:CurrentTheme].DisabledButton
     $script:RemoveFromUserButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonTextLight
+    $script:RemoveFromUserButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:RemoveFromUserButton.FlatStyle = "Flat"
+    $script:RemoveFromUserButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].BorderColor
+    $script:RemoveFromUserButton.FlatAppearance.BorderSize = 1
+    $script:RemoveFromUserButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:RemoveFromUserButton.Add_Click({
         if ($script:SingleRadio.Checked) {
             Remove-SinglePermission
@@ -2405,12 +2495,16 @@ function Build-MainForm {
     })
 
     $script:RemoveFromTitleButton = New-Object System.Windows.Forms.Button
-    $script:RemoveFromTitleButton.Text = "Remove All of Selection Access from User's Calendar"
-    $script:RemoveFromTitleButton.Location = New-Object System.Drawing.Point(335, 70)
-    $script:RemoveFromTitleButton.Size = New-Object System.Drawing.Size(305, 35)
+    $script:RemoveFromTitleButton.Text = "Banish Selection from Calendar"
+    $script:RemoveFromTitleButton.Location = New-Object System.Drawing.Point(335, 72)
+    $script:RemoveFromTitleButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:RemoveFromTitleButton.BackColor = $script:Themes[$script:CurrentTheme].RemoveButton
-    $script:RemoveFromTitleButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonTextLight
+    $script:RemoveFromTitleButton.ForeColor = $script:Themes[$script:CurrentTheme].ButtonText
+    $script:RemoveFromTitleButton.Font = New-Object System.Drawing.Font("Segoe UI", 9)
     $script:RemoveFromTitleButton.FlatStyle = "Flat"
+    $script:RemoveFromTitleButton.FlatAppearance.BorderColor = $script:Themes[$script:CurrentTheme].ErrorColor
+    $script:RemoveFromTitleButton.FlatAppearance.BorderSize = 1
+    $script:RemoveFromTitleButton.Cursor = [System.Windows.Forms.Cursors]::Hand
     $script:RemoveFromTitleButton.Add_Click({
         if ($script:SingleRadio.Checked) {
             Remove-SinglePermission
@@ -2425,9 +2519,9 @@ function Build-MainForm {
 
     $script:ActionsGroup.Controls.AddRange(@($script:GrantToUserButton, $script:GrantToTitleButton, $script:RemoveFromUserButton, $script:RemoveFromTitleButton))
 
-    # Results Group
+    # Results Group - Arcane Chronicle
     $script:ResultsGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ResultsGroup.Text = "Results Log"
+    $script:ResultsGroup.Text = "Arcane Chronicle"
     $script:ResultsGroup.Location = New-Object System.Drawing.Point(15, 660)
     $script:ResultsGroup.Size = New-Object System.Drawing.Size(655, 140)
     $script:ResultsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2439,7 +2533,7 @@ function Build-MainForm {
     $script:ResultsTextBox.Multiline = $true
     $script:ResultsTextBox.ScrollBars = "Vertical"
     $script:ResultsTextBox.ReadOnly = $true
-    $script:ResultsTextBox.Font = New-Object System.Drawing.Font("Consolas", 8)
+    $script:ResultsTextBox.Font = New-Object System.Drawing.Font("Cascadia Code", 9)
     $script:ResultsTextBox.BackColor = $script:Themes[$script:CurrentTheme].ResultsBackground
     $script:ResultsTextBox.ForeColor = $script:Themes[$script:CurrentTheme].ResultsText
 
@@ -2449,7 +2543,7 @@ function Build-MainForm {
     $statusStrip = New-Object System.Windows.Forms.StatusStrip
 
     $script:StatusLabel = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $script:StatusLabel.Text = "Not connected"
+    $script:StatusLabel.Text = "Portal sealed - Summon to begin"
     $script:StatusLabel.Spring = $true
     $script:StatusLabel.TextAlign = "MiddleLeft"
 
@@ -2475,8 +2569,8 @@ function Build-MainForm {
     $script:MainForm.Add_FormClosing({
         if ($script:IsConnected) {
             $result = [System.Windows.Forms.MessageBox]::Show(
-                "You are still connected. Disconnect before closing?",
-                "Confirm Close",
+                "The portal remains open. Seal it before departing?",
+                "Confirm Departure",
                 [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
                 [System.Windows.Forms.MessageBoxIcon]::Question
             )
