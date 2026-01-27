@@ -9,3 +9,4 @@ installer/*.wixpdb
 
 # Local settings
 .claude/
+installer/CalendarWarlock.msi
