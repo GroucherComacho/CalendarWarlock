@@ -40,43 +40,43 @@ if ($consolePtr -ne [IntPtr]::Zero) {
     [void][Console.Window]::ShowWindow($consolePtr, 0) # 0 = SW_HIDE
 }
 
-# Theme Configurations - Mystical Warlock Themes
+# Theme Configurations
 $script:Themes = @{
     Dark = @{
-        # Warlock's Shadow - Deep mystical purple/violet theme
-        FormBackground = [System.Drawing.Color]::FromArgb(15, 12, 25)           # Deep void black-purple
-        CardBackground = [System.Drawing.Color]::FromArgb(25, 20, 40)           # Dark mystical purple
+        # Dark Theme - Deep purple/violet
+        FormBackground = [System.Drawing.Color]::FromArgb(15, 12, 25)           # Deep black-purple
+        CardBackground = [System.Drawing.Color]::FromArgb(25, 20, 40)           # Dark purple
         HeaderBackground = [System.Drawing.Color]::FromArgb(45, 25, 70)         # Rich purple header
-        HeaderText = [System.Drawing.Color]::FromArgb(220, 200, 255)            # Ethereal lavender
-        PrimaryText = [System.Drawing.Color]::FromArgb(200, 190, 230)           # Soft magical white-purple
-        SecondaryText = [System.Drawing.Color]::FromArgb(130, 120, 170)         # Muted arcane purple
-        PrimaryButton = [System.Drawing.Color]::FromArgb(100, 60, 180)          # Arcane violet
-        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 140, 160)        # Mystical teal
+        HeaderText = [System.Drawing.Color]::FromArgb(220, 200, 255)            # Lavender
+        PrimaryText = [System.Drawing.Color]::FromArgb(200, 190, 230)           # Soft white-purple
+        SecondaryText = [System.Drawing.Color]::FromArgb(130, 120, 170)         # Muted purple
+        PrimaryButton = [System.Drawing.Color]::FromArgb(100, 60, 180)          # Violet
+        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 140, 160)        # Teal
         DisabledButton = [System.Drawing.Color]::FromArgb(60, 50, 80)           # Shadowed purple
-        RemoveButton = [System.Drawing.Color]::FromArgb(140, 40, 70)            # Blood magic crimson
-        ButtonText = [System.Drawing.Color]::FromArgb(240, 235, 255)            # Pure ethereal white
-        ButtonTextLight = [System.Drawing.Color]::FromArgb(200, 190, 230)       # Soft magical text
-        ResultsBackground = [System.Drawing.Color]::FromArgb(18, 15, 30)        # Deep void
-        ResultsText = [System.Drawing.Color]::FromArgb(120, 220, 200)           # Spectral teal glow
+        RemoveButton = [System.Drawing.Color]::FromArgb(140, 40, 70)            # Crimson
+        ButtonText = [System.Drawing.Color]::FromArgb(240, 235, 255)            # White
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(200, 190, 230)       # Soft text
+        ResultsBackground = [System.Drawing.Color]::FromArgb(18, 15, 30)        # Deep background
+        ResultsText = [System.Drawing.Color]::FromArgb(120, 220, 200)           # Teal
         InputBackground = [System.Drawing.Color]::FromArgb(30, 25, 50)          # Input field dark purple
         InputText = [System.Drawing.Color]::FromArgb(200, 190, 230)             # Input text
-        AccentGlow = [System.Drawing.Color]::FromArgb(180, 100, 255)            # Magical purple glow
-        SuccessColor = [System.Drawing.Color]::FromArgb(80, 200, 120)           # Enchanted green
+        AccentGlow = [System.Drawing.Color]::FromArgb(180, 100, 255)            # Purple accent
+        SuccessColor = [System.Drawing.Color]::FromArgb(80, 200, 120)           # Green
         WarningColor = [System.Drawing.Color]::FromArgb(255, 180, 80)           # Amber warning
         ErrorColor = [System.Drawing.Color]::FromArgb(220, 60, 90)              # Crimson error
         BorderColor = [System.Drawing.Color]::FromArgb(80, 60, 120)             # Subtle purple border
         ToggleText = "Dark"
     }
     Light = @{
-        # Arcane Sanctum - Mystical light theme with magical accents
+        # Light Theme - Clean light theme with purple accents
         FormBackground = [System.Drawing.Color]::FromArgb(240, 238, 248)        # Soft lavender white
-        CardBackground = [System.Drawing.Color]::FromArgb(252, 250, 255)        # Pure mystical white
+        CardBackground = [System.Drawing.Color]::FromArgb(252, 250, 255)        # White
         HeaderBackground = [System.Drawing.Color]::FromArgb(70, 45, 110)        # Deep amethyst
         HeaderText = [System.Drawing.Color]::FromArgb(255, 250, 255)            # Pure white
         PrimaryText = [System.Drawing.Color]::FromArgb(35, 25, 55)              # Dark purple text
         SecondaryText = [System.Drawing.Color]::FromArgb(100, 85, 130)          # Muted purple
         PrimaryButton = [System.Drawing.Color]::FromArgb(110, 70, 190)          # Vivid purple
-        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 150, 170)        # Mystical teal
+        SecondaryButton = [System.Drawing.Color]::FromArgb(60, 150, 170)        # Teal
         DisabledButton = [System.Drawing.Color]::FromArgb(200, 195, 210)        # Light gray-purple
         RemoveButton = [System.Drawing.Color]::FromArgb(180, 60, 90)            # Rose crimson
         ButtonText = [System.Drawing.Color]::FromArgb(255, 255, 255)            # Pure white
@@ -93,28 +93,28 @@ $script:Themes = @{
         ToggleText = "Light"
     }
     Warlock = @{
-        # Warlock's Grimoire - The true arcane experience: deep void with eldritch green glow
-        FormBackground = [System.Drawing.Color]::FromArgb(5, 5, 10)              # Abyssal void black
-        CardBackground = [System.Drawing.Color]::FromArgb(12, 15, 10)            # Dark ritual chamber
-        HeaderBackground = [System.Drawing.Color]::FromArgb(10, 30, 15)          # Deep eldritch forest
-        HeaderText = [System.Drawing.Color]::FromArgb(100, 255, 140)             # Spectral green glow
-        PrimaryText = [System.Drawing.Color]::FromArgb(170, 220, 180)            # Pale ghostly green
-        SecondaryText = [System.Drawing.Color]::FromArgb(90, 140, 100)           # Faded rune inscription
-        PrimaryButton = [System.Drawing.Color]::FromArgb(30, 120, 60)            # Eldritch emerald
-        SecondaryButton = [System.Drawing.Color]::FromArgb(120, 50, 160)         # Void purple
-        DisabledButton = [System.Drawing.Color]::FromArgb(30, 35, 30)            # Dormant stone
-        RemoveButton = [System.Drawing.Color]::FromArgb(160, 30, 30)             # Hellfire crimson
-        ButtonText = [System.Drawing.Color]::FromArgb(220, 255, 230)             # Bright spectral white-green
-        ButtonTextLight = [System.Drawing.Color]::FromArgb(140, 180, 150)        # Dim incantation text
-        ResultsBackground = [System.Drawing.Color]::FromArgb(3, 8, 5)            # Deep scrying pool
-        ResultsText = [System.Drawing.Color]::FromArgb(50, 255, 100)             # Toxic green terminal glow
-        InputBackground = [System.Drawing.Color]::FromArgb(15, 20, 15)           # Obsidian input slab
+        # Warlock Theme - Deep void with green glow
+        FormBackground = [System.Drawing.Color]::FromArgb(5, 5, 10)              # Deep black
+        CardBackground = [System.Drawing.Color]::FromArgb(12, 15, 10)            # Dark green-black
+        HeaderBackground = [System.Drawing.Color]::FromArgb(10, 30, 15)          # Deep forest
+        HeaderText = [System.Drawing.Color]::FromArgb(100, 255, 140)             # Bright green
+        PrimaryText = [System.Drawing.Color]::FromArgb(170, 220, 180)            # Pale green
+        SecondaryText = [System.Drawing.Color]::FromArgb(90, 140, 100)           # Faded green
+        PrimaryButton = [System.Drawing.Color]::FromArgb(30, 120, 60)            # Emerald
+        SecondaryButton = [System.Drawing.Color]::FromArgb(120, 50, 160)         # Purple
+        DisabledButton = [System.Drawing.Color]::FromArgb(30, 35, 30)            # Dark gray-green
+        RemoveButton = [System.Drawing.Color]::FromArgb(160, 30, 30)             # Red
+        ButtonText = [System.Drawing.Color]::FromArgb(220, 255, 230)             # Bright white-green
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(140, 180, 150)        # Dim green text
+        ResultsBackground = [System.Drawing.Color]::FromArgb(3, 8, 5)            # Deep dark background
+        ResultsText = [System.Drawing.Color]::FromArgb(50, 255, 100)             # Green terminal
+        InputBackground = [System.Drawing.Color]::FromArgb(15, 20, 15)           # Dark input field
         InputText = [System.Drawing.Color]::FromArgb(170, 220, 180)              # Pale green text
-        AccentGlow = [System.Drawing.Color]::FromArgb(60, 255, 120)              # Neon eldritch glow
-        SuccessColor = [System.Drawing.Color]::FromArgb(40, 220, 80)             # Verdant life magic
-        WarningColor = [System.Drawing.Color]::FromArgb(255, 160, 30)            # Molten amber hex
-        ErrorColor = [System.Drawing.Color]::FromArgb(255, 40, 40)               # Blood pact red
-        BorderColor = [System.Drawing.Color]::FromArgb(40, 100, 50)              # Eldritch green border
+        AccentGlow = [System.Drawing.Color]::FromArgb(60, 255, 120)              # Neon green accent
+        SuccessColor = [System.Drawing.Color]::FromArgb(40, 220, 80)             # Green
+        WarningColor = [System.Drawing.Color]::FromArgb(255, 160, 30)            # Amber
+        ErrorColor = [System.Drawing.Color]::FromArgb(255, 40, 40)               # Red
+        BorderColor = [System.Drawing.Color]::FromArgb(40, 100, 50)              # Green border
         ToggleText = "Warlock"
     }
 }
@@ -521,7 +521,7 @@ function Connect-Services {
 
         $script:IsConnected = $true
         $script:ConnectButton.Text = "Dismiss"
-        $script:StatusLabel.Text = "Portal open to $Organization"
+        $script:StatusLabel.Text = "Connected to $Organization"
 
         Update-ResultsLog "Successfully connected to all services!" "Success"
         Write-Log "Successfully connected to $Organization" "SUCCESS"
@@ -557,8 +557,8 @@ function Disconnect-Services {
         Disconnect-GraphSession | Out-Null
 
         $script:IsConnected = $false
-        $script:ConnectButton.Text = "Summon"
-        $script:StatusLabel.Text = "Portal sealed"
+        $script:ConnectButton.Text = "Connect"
+        $script:StatusLabel.Text = "Disconnected"
         $script:JobTitleComboBox.Items.Clear()
         $script:DepartmentComboBox.Items.Clear()
 
@@ -2012,7 +2012,7 @@ function Apply-Theme {
     # Main Form
     $script:MainForm.BackColor = $theme.FormBackground
 
-    # Header Panel with magical gradient effect
+    # Header Panel
     $script:HeaderPanel.BackColor = $theme.HeaderBackground
     $script:TitleLabel.ForeColor = $theme.HeaderText
     $script:SubtitleLabel.ForeColor = $theme.HeaderText
@@ -2022,13 +2022,13 @@ function Apply-Theme {
     $script:ThemeToggleButton.FlatAppearance.BorderColor = $theme.BorderColor
     $script:ThemeToggleButton.FlatAppearance.BorderSize = 1
 
-    # Group Boxes with mystical styling
+    # Group Boxes
     foreach ($group in @($script:ConnectionGroup, $script:MethodGroup, $script:TargetUserGroup, $script:PermissionGroup, $script:ActionsGroup, $script:ResultsGroup)) {
         $group.BackColor = $theme.CardBackground
         $group.ForeColor = $theme.PrimaryText
     }
 
-    # Style all TextBoxes with warlock theme
+    # Style all TextBoxes
     foreach ($textBox in @($script:OrganizationTextBox, $script:TargetUserTextBox, $script:CalendarOwnerTextBox, $script:SingleUserTextBox)) {
         if ($null -ne $textBox) {
             $textBox.BackColor = $theme.InputBackground
@@ -2045,7 +2045,7 @@ function Apply-Theme {
         }
     }
 
-    # Primary Action Buttons - Arcane power
+    # Primary Action Buttons
     $script:ConnectButton.BackColor = $theme.PrimaryButton
     $script:ConnectButton.ForeColor = $theme.ButtonText
     $script:ConnectButton.FlatAppearance.BorderColor = $theme.AccentGlow
@@ -2066,7 +2066,7 @@ function Apply-Theme {
     $script:GrantToTitleButton.FlatAppearance.BorderColor = $theme.AccentGlow
     $script:GrantToTitleButton.FlatAppearance.BorderSize = 1
 
-    # Secondary/Remove Buttons - Blood magic
+    # Secondary/Remove Buttons
     $script:RemoveFromUserButton.BackColor = $theme.DisabledButton
     $script:RemoveFromUserButton.ForeColor = $theme.ButtonTextLight
     $script:RemoveFromUserButton.FlatAppearance.BorderColor = $theme.BorderColor
@@ -2088,7 +2088,7 @@ function Apply-Theme {
         }
     }
 
-    # Results TextBox - Spectral glow
+    # Results TextBox
     $script:ResultsTextBox.BackColor = $theme.ResultsBackground
     $script:ResultsTextBox.ForeColor = $theme.ResultsText
     $script:ResultsTextBox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
@@ -2124,7 +2124,7 @@ function Toggle-Theme {
 function Build-MainForm {
     # Main Form
     $script:MainForm = New-Object System.Windows.Forms.Form
-    $script:MainForm.Text = "CalendarWarlock - Arcane Calendar Conjuration"
+    $script:MainForm.Text = "CalendarWarlock - Bulk Calendar Permission Manager"
     $script:MainForm.Size = New-Object System.Drawing.Size(700, 885)
     $script:MainForm.StartPosition = "CenterScreen"
     $script:MainForm.FormBorderStyle = "FixedSingle"
@@ -2162,13 +2162,13 @@ function Build-MainForm {
     $script:TitleLabel.AutoSize = $true
 
     $script:SubtitleLabel = New-Object System.Windows.Forms.Label
-    $script:SubtitleLabel.Text = "Conjure Calendar Permissions with Arcane Power"
+    $script:SubtitleLabel.Text = "Manage Bulk Calendar Permissions for Exchange Online"
     $script:SubtitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
     $script:SubtitleLabel.ForeColor = $script:Themes[$script:CurrentTheme].HeaderText
     $script:SubtitleLabel.Location = New-Object System.Drawing.Point(120, 58)
     $script:SubtitleLabel.AutoSize = $true
 
-    # Theme Toggle Button - Mystical realm switcher
+    # Theme Toggle Button
     $script:ThemeToggleButton = New-Object System.Windows.Forms.Button
     $script:ThemeToggleButton.Text = $script:Themes[$script:CurrentTheme].ToggleText
     $script:ThemeToggleButton.Font = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
@@ -2184,9 +2184,9 @@ function Build-MainForm {
 
     $script:HeaderPanel.Controls.AddRange(@($script:LogoPictureBox, $script:TitleLabel, $script:SubtitleLabel, $script:ThemeToggleButton))
 
-    # Connection Group - Portal to the Realm
+    # Connection Group
     $script:ConnectionGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ConnectionGroup.Text = "Realm Portal"
+    $script:ConnectionGroup.Text = "Connection"
     $script:ConnectionGroup.Location = New-Object System.Drawing.Point(15, 120)
     $script:ConnectionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:ConnectionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2203,7 +2203,7 @@ function Build-MainForm {
     try { $script:OrganizationTextBox.PlaceholderText = "contoso.onmicrosoft.com" } catch {}
 
     $script:ConnectButton = New-Object System.Windows.Forms.Button
-    $script:ConnectButton.Text = "Summon"
+    $script:ConnectButton.Text = "Connect"
     $script:ConnectButton.Location = New-Object System.Drawing.Point(470, 23)
     $script:ConnectButton.Size = New-Object System.Drawing.Size(110, 32)
     $script:ConnectButton.BackColor = $script:Themes[$script:CurrentTheme].PrimaryButton
@@ -2234,9 +2234,9 @@ function Build-MainForm {
 
     $script:ConnectionGroup.Controls.AddRange(@($orgLabel, $script:OrganizationTextBox, $script:ConnectButton))
 
-    # Method Selection Group - Spell Selection
+    # Selection Method Group
     $script:MethodGroup = New-Object System.Windows.Forms.GroupBox
-    $script:MethodGroup.Text = "Spell Selection"
+    $script:MethodGroup.Text = "Selection Method"
     $script:MethodGroup.Location = New-Object System.Drawing.Point(15, 200)
     $script:MethodGroup.Size = New-Object System.Drawing.Size(655, 160)
     $script:MethodGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2370,9 +2370,9 @@ function Build-MainForm {
         $script:CSVFileLabel, $script:BrowseCSVButton, $script:DownloadTemplateButton
     ))
 
-    # Target User Group - Spell Target
+    # Target User Group
     $script:TargetUserGroup = New-Object System.Windows.Forms.GroupBox
-    $script:TargetUserGroup.Text = "Spell Target"
+    $script:TargetUserGroup.Text = "Target User"
     $script:TargetUserGroup.Location = New-Object System.Drawing.Point(15, 370)
     $script:TargetUserGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:TargetUserGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2402,9 +2402,9 @@ function Build-MainForm {
 
     $script:TargetUserGroup.Controls.AddRange(@($targetUserLabel, $script:TargetUserTextBox, $script:SearchUserButton, $script:GetPermissionsButton))
 
-    # Permission Level Group - Power Level
+    # Permission Level Group
     $script:PermissionGroup = New-Object System.Windows.Forms.GroupBox
-    $script:PermissionGroup.Text = "Power Level"
+    $script:PermissionGroup.Text = "Permission Level"
     $script:PermissionGroup.Location = New-Object System.Drawing.Point(15, 450)
     $script:PermissionGroup.Size = New-Object System.Drawing.Size(655, 70)
     $script:PermissionGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2444,16 +2444,16 @@ function Build-MainForm {
 
     $script:PermissionGroup.Controls.AddRange(@($permissionLabel, $script:PermissionComboBox, $script:PermissionDescLabel))
 
-    # Actions Group - Cast Spells
+    # Actions Group
     $script:ActionsGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ActionsGroup.Text = "Cast Spells"
+    $script:ActionsGroup.Text = "Bulk Operations"
     $script:ActionsGroup.Location = New-Object System.Drawing.Point(15, 530)
     $script:ActionsGroup.Size = New-Object System.Drawing.Size(655, 120)
     $script:ActionsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ActionsGroup.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
 
     $script:GrantToUserButton = New-Object System.Windows.Forms.Button
-    $script:GrantToUserButton.Text = "Enchant User with Calendar Access"
+    $script:GrantToUserButton.Text = "Grant User Access to Calendars"
     $script:GrantToUserButton.Location = New-Object System.Drawing.Point(15, 25)
     $script:GrantToUserButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:GrantToUserButton.BackColor = $script:Themes[$script:CurrentTheme].PrimaryButton
@@ -2476,7 +2476,7 @@ function Build-MainForm {
     })
 
     $script:GrantToTitleButton = New-Object System.Windows.Forms.Button
-    $script:GrantToTitleButton.Text = "Bestow Calendar Upon Selection"
+    $script:GrantToTitleButton.Text = "Grant Selection Access to Calendar"
     $script:GrantToTitleButton.Location = New-Object System.Drawing.Point(335, 25)
     $script:GrantToTitleButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:GrantToTitleButton.BackColor = $script:Themes[$script:CurrentTheme].SecondaryButton
@@ -2499,7 +2499,7 @@ function Build-MainForm {
     })
 
     $script:RemoveFromUserButton = New-Object System.Windows.Forms.Button
-    $script:RemoveFromUserButton.Text = "Dispel User's Calendar Access"
+    $script:RemoveFromUserButton.Text = "Remove User Access from Calendars"
     $script:RemoveFromUserButton.Location = New-Object System.Drawing.Point(15, 72)
     $script:RemoveFromUserButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:RemoveFromUserButton.BackColor = $script:Themes[$script:CurrentTheme].DisabledButton
@@ -2522,7 +2522,7 @@ function Build-MainForm {
     })
 
     $script:RemoveFromTitleButton = New-Object System.Windows.Forms.Button
-    $script:RemoveFromTitleButton.Text = "Banish Selection from Calendar"
+    $script:RemoveFromTitleButton.Text = "Remove Selection Access from Calendar"
     $script:RemoveFromTitleButton.Location = New-Object System.Drawing.Point(335, 72)
     $script:RemoveFromTitleButton.Size = New-Object System.Drawing.Size(305, 38)
     $script:RemoveFromTitleButton.BackColor = $script:Themes[$script:CurrentTheme].RemoveButton
@@ -2546,9 +2546,9 @@ function Build-MainForm {
 
     $script:ActionsGroup.Controls.AddRange(@($script:GrantToUserButton, $script:GrantToTitleButton, $script:RemoveFromUserButton, $script:RemoveFromTitleButton))
 
-    # Results Group - Arcane Chronicle
+    # Results Group
     $script:ResultsGroup = New-Object System.Windows.Forms.GroupBox
-    $script:ResultsGroup.Text = "Arcane Chronicle"
+    $script:ResultsGroup.Text = "Operation Log"
     $script:ResultsGroup.Location = New-Object System.Drawing.Point(15, 660)
     $script:ResultsGroup.Size = New-Object System.Drawing.Size(655, 140)
     $script:ResultsGroup.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
@@ -2570,7 +2570,7 @@ function Build-MainForm {
     $statusStrip = New-Object System.Windows.Forms.StatusStrip
 
     $script:StatusLabel = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $script:StatusLabel.Text = "Portal sealed - Summon to begin"
+    $script:StatusLabel.Text = "Disconnected - Click Connect to begin"
     $script:StatusLabel.Spring = $true
     $script:StatusLabel.TextAlign = "MiddleLeft"
 
@@ -2596,8 +2596,8 @@ function Build-MainForm {
     $script:MainForm.Add_FormClosing({
         if ($script:IsConnected) {
             $result = [System.Windows.Forms.MessageBox]::Show(
-                "The portal remains open. Seal it before departing?",
-                "Confirm Departure",
+                "You are still connected. Disconnect before closing?",
+                "Confirm Exit",
                 [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
                 [System.Windows.Forms.MessageBoxIcon]::Question
             )
