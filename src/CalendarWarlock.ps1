@@ -65,7 +65,7 @@ $script:Themes = @{
         WarningColor = [System.Drawing.Color]::FromArgb(255, 180, 80)           # Amber warning
         ErrorColor = [System.Drawing.Color]::FromArgb(220, 60, 90)              # Crimson error
         BorderColor = [System.Drawing.Color]::FromArgb(80, 60, 120)             # Subtle purple border
-        ToggleText = "Arcane"
+        ToggleText = "Dark"
     }
     Light = @{
         # Arcane Sanctum - Mystical light theme with magical accents
@@ -90,7 +90,32 @@ $script:Themes = @{
         WarningColor = [System.Drawing.Color]::FromArgb(200, 140, 50)           # Amber
         ErrorColor = [System.Drawing.Color]::FromArgb(180, 50, 70)              # Crimson
         BorderColor = [System.Drawing.Color]::FromArgb(180, 170, 200)           # Soft purple border
-        ToggleText = "Shadow"
+        ToggleText = "Light"
+    }
+    Warlock = @{
+        # Warlock's Grimoire - The true arcane experience: deep void with eldritch green glow
+        FormBackground = [System.Drawing.Color]::FromArgb(5, 5, 10)              # Abyssal void black
+        CardBackground = [System.Drawing.Color]::FromArgb(12, 15, 10)            # Dark ritual chamber
+        HeaderBackground = [System.Drawing.Color]::FromArgb(10, 30, 15)          # Deep eldritch forest
+        HeaderText = [System.Drawing.Color]::FromArgb(100, 255, 140)             # Spectral green glow
+        PrimaryText = [System.Drawing.Color]::FromArgb(170, 220, 180)            # Pale ghostly green
+        SecondaryText = [System.Drawing.Color]::FromArgb(90, 140, 100)           # Faded rune inscription
+        PrimaryButton = [System.Drawing.Color]::FromArgb(30, 120, 60)            # Eldritch emerald
+        SecondaryButton = [System.Drawing.Color]::FromArgb(120, 50, 160)         # Void purple
+        DisabledButton = [System.Drawing.Color]::FromArgb(30, 35, 30)            # Dormant stone
+        RemoveButton = [System.Drawing.Color]::FromArgb(160, 30, 30)             # Hellfire crimson
+        ButtonText = [System.Drawing.Color]::FromArgb(220, 255, 230)             # Bright spectral white-green
+        ButtonTextLight = [System.Drawing.Color]::FromArgb(140, 180, 150)        # Dim incantation text
+        ResultsBackground = [System.Drawing.Color]::FromArgb(3, 8, 5)            # Deep scrying pool
+        ResultsText = [System.Drawing.Color]::FromArgb(50, 255, 100)             # Toxic green terminal glow
+        InputBackground = [System.Drawing.Color]::FromArgb(15, 20, 15)           # Obsidian input slab
+        InputText = [System.Drawing.Color]::FromArgb(170, 220, 180)              # Pale green text
+        AccentGlow = [System.Drawing.Color]::FromArgb(60, 255, 120)              # Neon eldritch glow
+        SuccessColor = [System.Drawing.Color]::FromArgb(40, 220, 80)             # Verdant life magic
+        WarningColor = [System.Drawing.Color]::FromArgb(255, 160, 30)            # Molten amber hex
+        ErrorColor = [System.Drawing.Color]::FromArgb(255, 40, 40)               # Blood pact red
+        BorderColor = [System.Drawing.Color]::FromArgb(40, 100, 50)              # Eldritch green border
+        ToggleText = "Warlock"
     }
 }
 #endregion
@@ -2084,10 +2109,12 @@ function Apply-Theme {
 }
 
 function Toggle-Theme {
-    if ($script:CurrentTheme -eq "Dark") {
-        $script:CurrentTheme = "Light"
-    } else {
-        $script:CurrentTheme = "Dark"
+    # Cycle through: Dark -> Light -> Warlock -> Dark
+    switch ($script:CurrentTheme) {
+        "Dark"    { $script:CurrentTheme = "Light" }
+        "Light"   { $script:CurrentTheme = "Warlock" }
+        "Warlock" { $script:CurrentTheme = "Dark" }
+        default   { $script:CurrentTheme = "Dark" }
     }
     Apply-Theme
 }
@@ -2145,8 +2172,8 @@ function Build-MainForm {
     $script:ThemeToggleButton = New-Object System.Windows.Forms.Button
     $script:ThemeToggleButton.Text = $script:Themes[$script:CurrentTheme].ToggleText
     $script:ThemeToggleButton.Font = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
-    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(610, 38)
-    $script:ThemeToggleButton.Size = New-Object System.Drawing.Size(70, 32)
+    $script:ThemeToggleButton.Location = New-Object System.Drawing.Point(600, 38)
+    $script:ThemeToggleButton.Size = New-Object System.Drawing.Size(80, 32)
     $script:ThemeToggleButton.BackColor = $script:Themes[$script:CurrentTheme].CardBackground
     $script:ThemeToggleButton.ForeColor = $script:Themes[$script:CurrentTheme].PrimaryText
     $script:ThemeToggleButton.FlatStyle = "Flat"
