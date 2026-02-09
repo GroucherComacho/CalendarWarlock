@@ -121,8 +121,7 @@ $script:Themes = @{
 #endregion
 
 #region Load Required Assemblies and Modules
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+# Note: Assemblies already loaded above for console hiding; just enable visual styles
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # Import custom modules with security validation
@@ -177,28 +176,8 @@ catch {
     exit 1
 }
 
-# Check for required PowerShell modules
-$requiredModules = @("ExchangeOnlineManagement", "Microsoft.Graph.Users")
-$missingModules = @()
-
-foreach ($module in $requiredModules) {
-    if (-not (Get-Module -ListAvailable -Name $module)) {
-        $missingModules += $module
-    }
-}
-
-if ($missingModules.Count -gt 0) {
-    $message = "The following required PowerShell modules are missing:`n`n"
-    $message += ($missingModules -join "`n")
-    $message += "`n`nPlease install them using:`nInstall-Module -Name <ModuleName> -Scope CurrentUser"
-
-    [System.Windows.Forms.MessageBox]::Show(
-        $message,
-        "CalendarWarlock - Missing Modules",
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Warning
-    )
-}
+# Note: Required module checks (ExchangeOnlineManagement, Microsoft.Graph.Users) are
+# handled by the launcher script Start-CalendarWarlock.ps1 to avoid duplicate prompts.
 #endregion
 
 #region Logging Functions
@@ -520,7 +499,7 @@ function Connect-Services {
         Update-ResultsLog $graphResult.Message "Success"
 
         $script:IsConnected = $true
-        $script:ConnectButton.Text = "Dismiss"
+        $script:ConnectButton.Text = "Disconnect"
         $script:StatusLabel.Text = "Connected to $Organization"
 
         Update-ResultsLog "Successfully connected to all services!" "Success"
@@ -875,14 +854,11 @@ function Grant-BulkPermissionsToUser {
     Set-UIEnabled -Enabled $false
 
     try {
-        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
-        $usersResult = Get-UsersForSelectedMethod
-
-        if (-not $usersResult.Success) {
-            throw $usersResult.Message
+        if (-not $methodResult.Success) {
+            throw $methodResult.Message
         }
 
-        $users = $usersResult.Users
+        $users = $methodResult.Users
         Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
@@ -1025,14 +1001,11 @@ function Grant-BulkPermissionsToTitle {
     Set-UIEnabled -Enabled $false
 
     try {
-        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
-        $usersResult = Get-UsersForSelectedMethod
-
-        if (-not $usersResult.Success) {
-            throw $usersResult.Message
+        if (-not $methodResult.Success) {
+            throw $methodResult.Message
         }
 
-        $users = $usersResult.Users
+        $users = $methodResult.Users
         Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
@@ -1238,14 +1211,11 @@ function Remove-BulkPermissionsFromUser {
     Set-UIEnabled -Enabled $false
 
     try {
-        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
-        $usersResult = Get-UsersForSelectedMethod
-
-        if (-not $usersResult.Success) {
-            throw $usersResult.Message
+        if (-not $methodResult.Success) {
+            throw $methodResult.Message
         }
 
-        $users = $usersResult.Users
+        $users = $methodResult.Users
         Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
@@ -1386,14 +1356,11 @@ function Remove-BulkPermissionsFromTitle {
     Set-UIEnabled -Enabled $false
 
     try {
-        Update-ResultsLog "Fetching users with $($methodResult.Method) '$($methodResult.Value)'..." "Info"
-        $usersResult = Get-UsersForSelectedMethod
-
-        if (-not $usersResult.Success) {
-            throw $usersResult.Message
+        if (-not $methodResult.Success) {
+            throw $methodResult.Message
         }
 
-        $users = $usersResult.Users
+        $users = $methodResult.Users
         Update-ResultsLog "Found $($users.Count) users" "Info"
 
         if ($users.Count -eq 0) {
@@ -1624,6 +1591,27 @@ function Remove-SinglePermission {
         return
     }
 
+    # Validate email formats
+    if (-not (Test-ValidEmailFormat -Email $calendarOwner)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the calendar owner.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
+    if (-not (Test-ValidEmailFormat -Email $targetUser)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Please enter a valid email address for the target user.",
+            "Invalid Email Format",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        return
+    }
+
     # Confirmation dialog
     $confirmResult = [System.Windows.Forms.MessageBox]::Show(
         "This will REMOVE $targetUser's access from $calendarOwner's calendar.`n`nAre you sure you want to continue?",
@@ -1766,10 +1754,10 @@ function Grant-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            # Sanitize CSV values to prevent formula injection
-            $calendarOwner = Sanitize-CSVValue -Value $entry.MailboxEmail.Trim()
-            $targetUser = Sanitize-CSVValue -Value $entry.UserEmail.Trim()
-            $permission = Sanitize-CSVValue -Value $entry.AccessLevel.Trim()
+            # Trim CSV values (Sanitize-CSVValue is only for OUTPUT/export, not input processing)
+            $calendarOwner = $entry.MailboxEmail.Trim()
+            $targetUser = $entry.UserEmail.Trim()
+            $permission = $entry.AccessLevel.Trim()
 
             if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser) -or [string]::IsNullOrEmpty($permission)) {
                 Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
@@ -1933,9 +1921,9 @@ function Remove-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            # Sanitize CSV values to prevent formula injection
-            $calendarOwner = Sanitize-CSVValue -Value $entry.MailboxEmail.Trim()
-            $targetUser = Sanitize-CSVValue -Value $entry.UserEmail.Trim()
+            # Trim CSV values (Sanitize-CSVValue is only for OUTPUT/export, not input processing)
+            $calendarOwner = $entry.MailboxEmail.Trim()
+            $targetUser = $entry.UserEmail.Trim()
 
             if ([string]::IsNullOrEmpty($calendarOwner) -or [string]::IsNullOrEmpty($targetUser)) {
                 Update-ResultsLog "Skipping row $($i + 1): Missing required data" "Warning"
@@ -2029,7 +2017,7 @@ function Apply-Theme {
     }
 
     # Style all TextBoxes
-    foreach ($textBox in @($script:OrganizationTextBox, $script:TargetUserTextBox, $script:CalendarOwnerTextBox, $script:SingleUserTextBox)) {
+    foreach ($textBox in @($script:OrganizationTextBox, $script:TargetUserTextBox, $script:SingleCalendarOwnerTextBox, $script:SingleUserTextBox)) {
         if ($null -ne $textBox) {
             $textBox.BackColor = $theme.InputBackground
             $textBox.ForeColor = $theme.InputText
@@ -2078,7 +2066,7 @@ function Apply-Theme {
     $script:RemoveFromTitleButton.FlatAppearance.BorderSize = 1
 
     # Style utility buttons
-    foreach ($btn in @($script:SearchUserButton, $script:GetPermissionsButton, $script:RefreshButton, $script:BrowseCSVButton, $script:DownloadTemplateButton)) {
+    foreach ($btn in @($script:SearchUserButton, $script:GetPermissionsButton, $script:RefreshTitlesButton, $script:BrowseCSVButton, $script:DownloadTemplateButton)) {
         if ($null -ne $btn) {
             $btn.BackColor = $theme.CardBackground
             $btn.ForeColor = $theme.PrimaryText
