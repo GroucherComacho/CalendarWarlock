@@ -6,7 +6,7 @@ This document provides an overview of the security measures implemented in Calen
 
 CalendarWarlock was designed with security as a priority. The application underwent comprehensive security testing and all identified vulnerabilities have been addressed.
 
-**Current Security Status: LOW RISK**
+**Current Security Status: LOW-MEDIUM**
 
 ## Key Security Features
 
@@ -20,16 +20,17 @@ CalendarWarlock was designed with security as a priority. The application underw
 
 - **Email Validation**: All email addresses are validated before processing to prevent malformed input.
 - **Permission Level Validation**: Only valid Exchange Online permission levels are accepted.
-- **CSV Sanitization**: CSV file imports are protected against formula injection attacks.
+- **OData Injection Prevention**: All inputs to Microsoft Graph queries are properly escaped.
+- **CSV Validation**: CSV file imports validate email formats and access levels per row.
 
 ### Audit & Logging
 
 - **Operation Logging**: All permission changes are logged with timestamps for audit purposes.
-- **Sanitized Error Messages**: Error messages are cleaned to prevent sensitive information disclosure.
+- **Sanitized Error Messages**: Error messages displayed in the UI are cleaned to prevent sensitive information disclosure.
 
 ## Security Issues Found and Fixed
 
-During security assessment, several vulnerabilities were identified and remediated:
+During security assessments, several vulnerabilities were identified and remediated:
 
 ### High Severity Issues (2 Fixed)
 
@@ -48,7 +49,7 @@ During security assessment, several vulnerabilities were identified and remediat
 #### CSV Formula Injection Protection
 **Issue**: Malicious CSV files could contain formulas that execute when opened in Excel.
 
-**Resolution**: Implemented `Sanitize-CSVValue` function that prefixes potentially dangerous values (starting with `=`, `+`, `-`, `@`, tab, or newline) with a single quote to prevent formula execution.
+**Resolution**: Implemented `Sanitize-CSVValue` function that prefixes potentially dangerous values (starting with `=`, `+`, `-`, `@`, tab, or newline) with a single quote to prevent formula execution. Additionally, email format validation rejects formula-prefixed values as invalid emails.
 
 **Files Fixed**:
 - `src/CalendarWarlock.ps1`
@@ -92,7 +93,7 @@ During security assessment, several vulnerabilities were identified and remediat
 #### Error Message Sanitization (Fixed)
 **Issue**: Error messages could reveal sensitive system information like file paths or IP addresses.
 
-**Resolution**: Implemented `Sanitize-ErrorMessage` function that removes file paths, connection strings, and IP addresses from error output.
+**Resolution**: Implemented `Sanitize-ErrorMessage` function that removes file paths, connection strings, and IP addresses from error output displayed in the UI.
 
 #### Log File Content (Acknowledged)
 **Issue**: Log files contain email addresses and operation details.
@@ -106,6 +107,24 @@ During security assessment, several vulnerabilities were identified and remediat
 
 ---
 
+## Open Items from Vulnerability Scan (2026-02-10)
+
+The following items were identified during the most recent vulnerability scan and penetration test. They are primarily operational hardening recommendations rather than exploitable vulnerabilities:
+
+| ID | Severity | Finding | Recommendation |
+|----|----------|---------|----------------|
+| MEDIUM-006 | Medium | ExecutionPolicy Bypass in batch launcher | Sign scripts or use RemoteSigned policy |
+| MEDIUM-007 | Medium | No CSV file size/row limit | Add size checks before import |
+| MEDIUM-008 | Medium | Unsanitized errors in log files | Apply sanitization to logs |
+| MEDIUM-009 | Medium | No organization domain validation | Add domain format regex |
+| MEDIUM-010 | Medium | No session timeout | Implement idle disconnect |
+| LOW-004 | Low | Sanitize-CSVValue function unused | Integrate or document |
+| LOW-005 | Low | Default log file permissions | Use restrictive ACLs |
+
+For detailed technical information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
+
+---
+
 ## Best Practices for Users
 
 1. **Keep Modules Updated**: Regularly update the ExchangeOnlineManagement and Microsoft.Graph PowerShell modules for security patches.
@@ -114,9 +133,13 @@ During security assessment, several vulnerabilities were identified and remediat
 
 3. **Use Least Privilege**: Select the minimum permission level needed for each use case. "Reviewer" is sufficient for read-only access.
 
-4. **Verify CSV Files**: Only import CSV files from trusted sources. The application sanitizes input, but it's best to verify file contents before import.
+4. **Verify CSV Files**: Only import CSV files from trusted sources. The application validates email formats and access levels, but it's best to verify file contents before import.
 
 5. **Close Application When Done**: Always close CalendarWarlock when finished to ensure sessions are properly disconnected.
+
+6. **Lock Your Workstation**: The application does not have an idle timeout. Lock your workstation when stepping away to prevent unauthorized session use.
+
+7. **Verify Installation Integrity**: Since scripts are not digitally signed, ensure the installation directory has appropriate access controls to prevent tampering.
 
 ## Reporting Security Issues
 
@@ -129,5 +152,6 @@ If you discover a security vulnerability in CalendarWarlock, please report it th
 |------|-----------------|--------|
 | 2026-01-19 | Initial Security Audit | MEDIUM RISK |
 | 2026-01-19 | Remediation & Re-assessment | LOW RISK |
+| 2026-02-10 | Vulnerability Scan & Penetration Test | LOW-MEDIUM RISK |
 
 For detailed technical security information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
