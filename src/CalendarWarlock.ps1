@@ -23,6 +23,8 @@ $script:LogPath = Join-Path $script:ScriptPath "Logs"
 $script:IsConnected = $false
 $script:CSVFilePath = $null
 $script:CurrentTheme = "Dark"
+$script:IdleTimeoutMinutes = 30
+$script:LastActivityTime = Get-Date
 
 # Load required assemblies for Windows Forms and Drawing
 Add-Type -AssemblyName System.Windows.Forms
@@ -183,7 +185,21 @@ catch {
 #region Logging Functions
 function Initialize-Logging {
     if (-not (Test-Path $script:LogPath)) {
-        New-Item -ItemType Directory -Path $script:LogPath -Force | Out-Null
+        $logDir = New-Item -ItemType Directory -Path $script:LogPath -Force
+        # Restrict log directory permissions to current user only
+        try {
+            $acl = $logDir.GetAccessControl()
+            $acl.SetAccessRuleProtection($true, $false)  # Disable inheritance
+            $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                $currentUser, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+            )
+            $acl.AddAccessRule($rule)
+            $logDir.SetAccessControl($acl)
+        }
+        catch {
+            # Non-fatal: continue even if ACL restriction fails (e.g., on non-Windows)
+        }
     }
     $script:LogFile = Join-Path $script:LogPath "CalendarWarlock_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 }
@@ -196,7 +212,9 @@ function Write-Log {
     )
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp] [$Level] $Message"
+    # Sanitize log messages to prevent sensitive data from being written to log files
+    $sanitizedMessage = Sanitize-ErrorMessage -ErrorMessage $Message
+    $logEntry = "[$timestamp] [$Level] $sanitizedMessage"
 
     if ($script:LogFile) {
         Add-Content -Path $script:LogFile -Value $logEntry -ErrorAction SilentlyContinue
@@ -204,8 +222,10 @@ function Write-Log {
 
     # Also update the status in the GUI if available
     if ($script:StatusLabel) {
-        $script:StatusLabel.Text = $Message
-        [System.Windows.Forms.Application]::DoEvents()
+        $script:StatusLabel.Text = $sanitizedMessage
+        if ($script:MainForm) {
+            $script:MainForm.Refresh()
+        }
     }
 }
 #endregion
@@ -218,6 +238,7 @@ function Sanitize-CSVValue {
     .DESCRIPTION
         Escapes values that could be interpreted as formulas by Excel/spreadsheet software.
         Prefixes with a single quote any value starting with =, +, -, @, tab, or carriage return.
+        Used when writing user-supplied data to CSV output to prevent formula injection attacks.
     .PARAMETER Value
         The string value to sanitize
     .EXAMPLE
@@ -342,7 +363,9 @@ function Update-ProgressBar {
     if ($script:ProgressBar) {
         $script:ProgressBar.Maximum = $Maximum
         $script:ProgressBar.Value = [Math]::Min($Value, $Maximum)
-        [System.Windows.Forms.Application]::DoEvents()
+        if ($script:MainForm) {
+            $script:MainForm.Refresh()
+        }
     }
 }
 
@@ -362,13 +385,36 @@ function Update-ResultsLog {
         }
         $script:ResultsTextBox.AppendText("$timestamp $prefix $Message`r`n")
         $script:ResultsTextBox.ScrollToCaret()
-        [System.Windows.Forms.Application]::DoEvents()
+        if ($script:MainForm) {
+            $script:MainForm.Refresh()
+        }
     }
 }
 
 function Clear-ResultsLog {
     if ($script:ResultsTextBox) {
         $script:ResultsTextBox.Clear()
+    }
+}
+
+function Reset-IdleTimer {
+    $script:LastActivityTime = Get-Date
+}
+
+function Test-IdleTimeout {
+    if (-not $script:IsConnected) { return }
+
+    $elapsed = (Get-Date) - $script:LastActivityTime
+    if ($elapsed.TotalMinutes -ge $script:IdleTimeoutMinutes) {
+        Update-ResultsLog "Session idle for $($script:IdleTimeoutMinutes) minutes. Disconnecting for security." "Warning"
+        Write-Log "Idle timeout reached ($($script:IdleTimeoutMinutes) minutes). Auto-disconnecting." "WARNING"
+        Disconnect-Services
+        [System.Windows.Forms.MessageBox]::Show(
+            "Your session has been automatically disconnected after $($script:IdleTimeoutMinutes) minutes of inactivity.`n`nPlease reconnect to continue.",
+            "Session Timeout",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
     }
 }
 
@@ -1701,6 +1747,18 @@ function Grant-BulkCSVPermissions {
     }
 
     try {
+        # Check CSV file size before import to prevent memory exhaustion
+        $csvFileSize = (Get-Item $script:CSVFilePath).Length
+        if ($csvFileSize -gt 10MB) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is too large ($('{0:N1}' -f ($csvFileSize / 1MB)) MB). Maximum allowed size is 10 MB.",
+                "File Too Large",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
         $csvData = Import-Csv -Path $script:CSVFilePath
 
         # Validate CSV structure
@@ -1727,9 +1785,15 @@ function Grant-BulkCSVPermissions {
             return
         }
 
+        # Warn about large row counts that may trigger M365 throttling
+        $rowCountWarning = ""
+        if ($csvData.Count -gt 500) {
+            $rowCountWarning = "`n`nWARNING: This CSV contains $($csvData.Count) rows. Large bulk operations may trigger Microsoft 365 API throttling."
+        }
+
         # Confirmation dialog
         $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-            "This will process $($csvData.Count) permission grant(s) from the CSV file.`n`nAre you sure you want to continue?",
+            "This will process $($csvData.Count) permission grant(s) from the CSV file.$rowCountWarning`n`nAre you sure you want to continue?",
             "Confirm Bulk CSV Grant",
             [System.Windows.Forms.MessageBoxButtons]::YesNo,
             [System.Windows.Forms.MessageBoxIcon]::Question
@@ -1868,6 +1932,18 @@ function Remove-BulkCSVPermissions {
     }
 
     try {
+        # Check CSV file size before import to prevent memory exhaustion
+        $csvFileSize = (Get-Item $script:CSVFilePath).Length
+        if ($csvFileSize -gt 10MB) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is too large ($('{0:N1}' -f ($csvFileSize / 1MB)) MB). Maximum allowed size is 10 MB.",
+                "File Too Large",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
         $csvData = Import-Csv -Path $script:CSVFilePath
 
         # Validate CSV structure (only need MailboxEmail and UserEmail for removal)
@@ -1894,9 +1970,15 @@ function Remove-BulkCSVPermissions {
             return
         }
 
+        # Warn about large row counts that may trigger M365 throttling
+        $rowCountWarning = ""
+        if ($csvData.Count -gt 500) {
+            $rowCountWarning = "`n`nWARNING: This CSV contains $($csvData.Count) rows. Large bulk operations may trigger Microsoft 365 API throttling."
+        }
+
         # Confirmation dialog
         $confirmResult = [System.Windows.Forms.MessageBox]::Show(
-            "This will REMOVE $($csvData.Count) permission(s) based on the CSV file.`n`nAre you sure you want to continue?",
+            "This will REMOVE $($csvData.Count) permission(s) based on the CSV file.$rowCountWarning`n`nAre you sure you want to continue?",
             "Confirm Bulk CSV Removal",
             [System.Windows.Forms.MessageBoxButtons]::YesNo,
             [System.Windows.Forms.MessageBoxIcon]::Warning
@@ -2211,6 +2293,17 @@ function Build-MainForm {
                 [System.Windows.Forms.MessageBox]::Show(
                     "Please enter your organization domain (e.g., contoso.onmicrosoft.com)",
                     "Organization Required",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+                return
+            }
+            # Validate domain format before attempting connection
+            $domainPattern = '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if ($org -notmatch $domainPattern) {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Please enter a valid domain (e.g., contoso.onmicrosoft.com).`n`nThe domain should contain only letters, numbers, dots, and hyphens.",
+                    "Invalid Domain Format",
                     [System.Windows.Forms.MessageBoxButtons]::OK,
                     [System.Windows.Forms.MessageBoxIcon]::Warning
                 )
@@ -2580,8 +2673,39 @@ function Build-MainForm {
         $statusStrip
     ))
 
+    # Idle session timeout timer - checks every 60 seconds
+    $script:IdleTimer = New-Object System.Windows.Forms.Timer
+    $script:IdleTimer.Interval = 60000  # Check every 60 seconds
+    $script:IdleTimer.Add_Tick({ Test-IdleTimeout })
+    $script:IdleTimer.Start()
+
+    # Reset idle timer on user interaction with the form
+    $script:MainForm.Add_Click({ Reset-IdleTimer })
+    $script:MainForm.Add_KeyPress({ Reset-IdleTimer })
+
+    # Reset idle timer when any button is clicked or text is changed
+    foreach ($control in @(
+        $script:ConnectButton, $script:SearchUserButton, $script:GetPermissionsButton,
+        $script:GrantToUserButton, $script:GrantToTitleButton,
+        $script:RemoveFromUserButton, $script:RemoveFromTitleButton,
+        $script:RefreshTitlesButton, $script:BrowseCSVButton, $script:DownloadTemplateButton
+    )) {
+        if ($control) {
+            $control.Add_Click({ Reset-IdleTimer })
+        }
+    }
+    foreach ($textBox in @($script:OrganizationTextBox, $script:TargetUserTextBox, $script:SingleCalendarOwnerTextBox, $script:SingleUserTextBox)) {
+        if ($textBox) {
+            $textBox.Add_TextChanged({ Reset-IdleTimer })
+        }
+    }
+
     # Form closing event
     $script:MainForm.Add_FormClosing({
+        if ($script:IdleTimer) {
+            $script:IdleTimer.Stop()
+            $script:IdleTimer.Dispose()
+        }
         if ($script:IsConnected) {
             $result = [System.Windows.Forms.MessageBox]::Show(
                 "You are still connected. Disconnect before closing?",
