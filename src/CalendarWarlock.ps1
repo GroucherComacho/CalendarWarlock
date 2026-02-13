@@ -23,6 +23,8 @@ $script:LogPath = Join-Path $script:ScriptPath "Logs"
 $script:IsConnected = $false
 $script:CSVFilePath = $null
 $script:CurrentTheme = "Dark"
+$script:IdleTimeoutMinutes = 30
+$script:LastActivityTime = [DateTime]::Now
 
 # Load required assemblies for Windows Forms and Drawing
 Add-Type -AssemblyName System.Windows.Forms
@@ -184,6 +186,21 @@ catch {
 function Initialize-Logging {
     if (-not (Test-Path $script:LogPath)) {
         New-Item -ItemType Directory -Path $script:LogPath -Force | Out-Null
+
+        # LOW-005: Set restrictive ACLs on log directory - only current user has access
+        try {
+            $acl = Get-Acl $script:LogPath
+            $acl.SetAccessRuleProtection($true, $false)  # Disable inheritance, remove inherited rules
+            $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                $currentUser, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+            )
+            $acl.AddAccessRule($rule)
+            Set-Acl -Path $script:LogPath -AclObject $acl
+        }
+        catch {
+            # Non-fatal: continue even if ACL setting fails (e.g., insufficient permissions)
+        }
     }
     $script:LogFile = Join-Path $script:LogPath "CalendarWarlock_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 }
@@ -205,47 +222,13 @@ function Write-Log {
     # Also update the status in the GUI if available
     if ($script:StatusLabel) {
         $script:StatusLabel.Text = $Message
-        [System.Windows.Forms.Application]::DoEvents()
+        # LOW-006: Use targeted Refresh instead of DoEvents to avoid re-entrancy risk
+        if ($script:MainForm) { $script:MainForm.Refresh() }
     }
 }
 #endregion
 
 #region Security Helper Functions
-function Sanitize-CSVValue {
-    <#
-    .SYNOPSIS
-        Sanitizes a string value to prevent CSV formula injection
-    .DESCRIPTION
-        Escapes values that could be interpreted as formulas by Excel/spreadsheet software.
-        Prefixes with a single quote any value starting with =, +, -, @, tab, or carriage return.
-    .PARAMETER Value
-        The string value to sanitize
-    .EXAMPLE
-        Sanitize-CSVValue -Value "=cmd|'/C calc'!A0"
-        Returns: "'=cmd|'/C calc'!A0"
-    #>
-    param(
-        [Parameter(Mandatory = $false)]
-        [string]$Value
-    )
-
-    if ([string]::IsNullOrEmpty($Value)) {
-        return $Value
-    }
-
-    # Characters that can trigger formula interpretation in Excel
-    $formulaTriggers = @('=', '+', '-', '@', "`t", "`r", "`n")
-
-    foreach ($trigger in $formulaTriggers) {
-        if ($Value.StartsWith($trigger)) {
-            # Prefix with single quote to treat as text in Excel
-            return "'" + $Value
-        }
-    }
-
-    return $Value
-}
-
 function Test-ValidEmailFormat {
     <#
     .SYNOPSIS
@@ -342,7 +325,8 @@ function Update-ProgressBar {
     if ($script:ProgressBar) {
         $script:ProgressBar.Maximum = $Maximum
         $script:ProgressBar.Value = [Math]::Min($Value, $Maximum)
-        [System.Windows.Forms.Application]::DoEvents()
+        # LOW-006: Use targeted Refresh instead of DoEvents to avoid re-entrancy risk
+        if ($script:MainForm) { $script:MainForm.Refresh() }
     }
 }
 
@@ -362,7 +346,8 @@ function Update-ResultsLog {
         }
         $script:ResultsTextBox.AppendText("$timestamp $prefix $Message`r`n")
         $script:ResultsTextBox.ScrollToCaret()
-        [System.Windows.Forms.Application]::DoEvents()
+        # LOW-006: Use targeted Refresh instead of DoEvents to avoid re-entrancy risk
+        if ($script:MainForm) { $script:MainForm.Refresh() }
     }
 }
 
@@ -408,6 +393,29 @@ function Set-UIEnabled {
     # When enabling, respect the radio button state for controls
     if ($Enabled) {
         Update-MethodSelectionUI
+    }
+}
+
+function Reset-IdleTimer {
+    # MEDIUM-010: Reset the idle timer on user activity
+    $script:LastActivityTime = [DateTime]::Now
+}
+
+function Test-IdleTimeout {
+    # MEDIUM-010: Check if the idle timeout has been exceeded
+    if ($script:IsConnected) {
+        $idleMinutes = ([DateTime]::Now - $script:LastActivityTime).TotalMinutes
+        if ($idleMinutes -ge $script:IdleTimeoutMinutes) {
+            Write-Log "Session idle timeout after $script:IdleTimeoutMinutes minutes" "WARNING"
+            Update-ResultsLog "Session disconnected due to inactivity ($script:IdleTimeoutMinutes minutes)" "Warning"
+            Disconnect-Services
+            [System.Windows.Forms.MessageBox]::Show(
+                "Your session has been disconnected due to $script:IdleTimeoutMinutes minutes of inactivity.`n`nPlease reconnect to continue.",
+                "Session Timeout",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Information
+            )
+        }
     }
 }
 
@@ -510,7 +518,7 @@ function Connect-Services {
     }
     catch {
         Update-ResultsLog "Connection failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Connection failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Connection failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
         $script:IsConnected = $false
 
         [System.Windows.Forms.MessageBox]::Show(
@@ -913,7 +921,7 @@ function Grant-BulkPermissionsToUser {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1060,7 +1068,7 @@ function Grant-BulkPermissionsToTitle {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1270,7 +1278,7 @@ function Remove-BulkPermissionsFromUser {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1415,7 +1423,7 @@ function Remove-BulkPermissionsFromTitle {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1538,7 +1546,7 @@ function Grant-SinglePermission {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1660,7 +1668,7 @@ function Remove-SinglePermission {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1701,6 +1709,19 @@ function Grant-BulkCSVPermissions {
     }
 
     try {
+        # MEDIUM-007: Validate CSV file size before import to prevent memory exhaustion
+        $csvFileInfo = Get-Item $script:CSVFilePath
+        $maxFileSizeBytes = 10MB
+        if ($csvFileInfo.Length -gt $maxFileSizeBytes) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is too large ($([math]::Round($csvFileInfo.Length / 1MB, 2)) MB).`nMaximum allowed size is 10 MB.",
+                "File Too Large",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
         $csvData = Import-Csv -Path $script:CSVFilePath
 
         # Validate CSV structure
@@ -1727,6 +1748,20 @@ function Grant-BulkCSVPermissions {
             return
         }
 
+        # MEDIUM-007: Warn user about large row counts that may trigger API throttling
+        $maxRowsBeforeWarning = 1000
+        if ($csvData.Count -gt $maxRowsBeforeWarning) {
+            $largeFileResult = [System.Windows.Forms.MessageBox]::Show(
+                "The CSV file contains $($csvData.Count) rows, which exceeds the recommended limit of $maxRowsBeforeWarning.`n`nLarge operations may trigger Microsoft 365 API throttling.`n`nDo you want to continue?",
+                "Large CSV Warning",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            if ($largeFileResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+                return
+            }
+        }
+
         # Confirmation dialog
         $confirmResult = [System.Windows.Forms.MessageBox]::Show(
             "This will process $($csvData.Count) permission grant(s) from the CSV file.`n`nAre you sure you want to continue?",
@@ -1742,7 +1777,7 @@ function Grant-BulkCSVPermissions {
         Clear-ResultsLog
         Update-ResultsLog "Starting bulk CSV permission grant..." "Info"
         Update-ResultsLog "Processing $($csvData.Count) entries from CSV" "Info"
-        Write-Log "Grant-BulkCSVPermissions: Processing $($csvData.Count) entries from $($script:CSVFilePath)" "INFO"
+        Write-Log "Grant-BulkCSVPermissions: Processing $($csvData.Count) entries from CSV file" "INFO"
 
         Set-UIEnabled -Enabled $false
 
@@ -1754,7 +1789,7 @@ function Grant-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            # Trim CSV values (Sanitize-CSVValue is only for OUTPUT/export, not input processing)
+            # Trim CSV values
             $calendarOwner = $entry.MailboxEmail.Trim()
             $targetUser = $entry.UserEmail.Trim()
             $permission = $entry.AccessLevel.Trim()
@@ -1826,7 +1861,7 @@ function Grant-BulkCSVPermissions {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -1868,6 +1903,19 @@ function Remove-BulkCSVPermissions {
     }
 
     try {
+        # MEDIUM-007: Validate CSV file size before import to prevent memory exhaustion
+        $csvFileInfo = Get-Item $script:CSVFilePath
+        $maxFileSizeBytes = 10MB
+        if ($csvFileInfo.Length -gt $maxFileSizeBytes) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "CSV file is too large ($([math]::Round($csvFileInfo.Length / 1MB, 2)) MB).`nMaximum allowed size is 10 MB.",
+                "File Too Large",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
+
         $csvData = Import-Csv -Path $script:CSVFilePath
 
         # Validate CSV structure (only need MailboxEmail and UserEmail for removal)
@@ -1894,6 +1942,20 @@ function Remove-BulkCSVPermissions {
             return
         }
 
+        # MEDIUM-007: Warn user about large row counts that may trigger API throttling
+        $maxRowsBeforeWarning = 1000
+        if ($csvData.Count -gt $maxRowsBeforeWarning) {
+            $largeFileResult = [System.Windows.Forms.MessageBox]::Show(
+                "The CSV file contains $($csvData.Count) rows, which exceeds the recommended limit of $maxRowsBeforeWarning.`n`nLarge operations may trigger Microsoft 365 API throttling.`n`nDo you want to continue?",
+                "Large CSV Warning",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            if ($largeFileResult -ne [System.Windows.Forms.DialogResult]::Yes) {
+                return
+            }
+        }
+
         # Confirmation dialog
         $confirmResult = [System.Windows.Forms.MessageBox]::Show(
             "This will REMOVE $($csvData.Count) permission(s) based on the CSV file.`n`nAre you sure you want to continue?",
@@ -1909,7 +1971,7 @@ function Remove-BulkCSVPermissions {
         Clear-ResultsLog
         Update-ResultsLog "Starting bulk CSV permission removal..." "Info"
         Update-ResultsLog "Processing $($csvData.Count) entries from CSV" "Info"
-        Write-Log "Remove-BulkCSVPermissions: Processing $($csvData.Count) entries from $($script:CSVFilePath)" "INFO"
+        Write-Log "Remove-BulkCSVPermissions: Processing $($csvData.Count) entries from CSV file" "INFO"
 
         Set-UIEnabled -Enabled $false
 
@@ -1921,7 +1983,7 @@ function Remove-BulkCSVPermissions {
 
         for ($i = 0; $i -lt $csvData.Count; $i++) {
             $entry = $csvData[$i]
-            # Trim CSV values (Sanitize-CSVValue is only for OUTPUT/export, not input processing)
+            # Trim CSV values
             $calendarOwner = $entry.MailboxEmail.Trim()
             $targetUser = $entry.UserEmail.Trim()
 
@@ -1977,7 +2039,7 @@ function Remove-BulkCSVPermissions {
     }
     catch {
         Update-ResultsLog "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-        Write-Log "Operation failed: $($_.Exception.Message)" "ERROR"
+        Write-Log "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "ERROR"
 
         [System.Windows.Forms.MessageBox]::Show(
             "Operation failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)",
@@ -2216,6 +2278,17 @@ function Build-MainForm {
                 )
                 return
             }
+            # MEDIUM-009: Validate organization domain format
+            $domainPattern = '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if ($org -notmatch $domainPattern) {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Please enter a valid domain (e.g., contoso.onmicrosoft.com).`n`nThe domain must contain only letters, numbers, dots, and hyphens.",
+                    "Invalid Domain Format",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+                return
+            }
             Connect-Services -Organization $org
         }
     })
@@ -2287,6 +2360,8 @@ function Build-MainForm {
     try { $script:SingleUserTextBox.PlaceholderText = "user@contoso.com" } catch {}
 
     # Job Title controls
+    # LOW-007: DropDown (not DropDownList) is intentional for autocomplete/type-ahead functionality.
+    # OData injection is mitigated by single-quote escaping in AzureADOperations.psm1.
     $script:JobTitleComboBox = New-Object System.Windows.Forms.ComboBox
     $script:JobTitleComboBox.Location = New-Object System.Drawing.Point(105, 53)
     $script:JobTitleComboBox.Size = New-Object System.Drawing.Size(345, 23)
@@ -2295,7 +2370,7 @@ function Build-MainForm {
     $script:JobTitleComboBox.AutoCompleteSource = "ListItems"
     $script:JobTitleComboBox.Enabled = $false
 
-    # Department controls
+    # Department controls (same DropDown rationale as Job Title above - LOW-007)
     $script:DepartmentComboBox = New-Object System.Windows.Forms.ComboBox
     $script:DepartmentComboBox.Location = New-Object System.Drawing.Point(105, 83)
     $script:DepartmentComboBox.Size = New-Object System.Drawing.Size(345, 23)
@@ -2579,6 +2654,26 @@ function Build-MainForm {
         $script:ResultsGroup,
         $statusStrip
     ))
+
+    # MEDIUM-010: Idle session timeout timer (checks every 60 seconds)
+    $script:IdleTimer = New-Object System.Windows.Forms.Timer
+    $script:IdleTimer.Interval = 60000  # Check every 60 seconds
+    $script:IdleTimer.Add_Tick({ Test-IdleTimeout })
+    $script:IdleTimer.Start()
+
+    # Reset idle timer on user interaction with key controls
+    foreach ($control in @($script:ConnectButton, $script:GrantToUserButton, $script:GrantToTitleButton,
+        $script:RemoveFromUserButton, $script:RemoveFromTitleButton, $script:SearchUserButton,
+        $script:GetPermissionsButton, $script:RefreshTitlesButton, $script:BrowseCSVButton)) {
+        $control.Add_Click({ Reset-IdleTimer })
+    }
+    foreach ($control in @($script:OrganizationTextBox, $script:TargetUserTextBox,
+        $script:SingleCalendarOwnerTextBox, $script:SingleUserTextBox)) {
+        $control.Add_TextChanged({ Reset-IdleTimer })
+    }
+    foreach ($control in @($script:JobTitleComboBox, $script:DepartmentComboBox, $script:PermissionComboBox)) {
+        $control.Add_SelectedIndexChanged({ Reset-IdleTimer })
+    }
 
     # Form closing event
     $script:MainForm.Add_FormClosing({
