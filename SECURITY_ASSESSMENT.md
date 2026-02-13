@@ -1,7 +1,7 @@
 # CalendarWarlock Security Assessment Report
 
 **Date:** 2026-01-19
-**Last Updated:** 2026-02-10 (Vulnerability Scan & Penetration Test)
+**Last Updated:** 2026-02-13 (All Vulnerability Findings Remediated)
 **Assessed By:** Security Vulnerability Scan & Penetration Testing
 **Version:** 1.0.0.2
 
@@ -11,17 +11,17 @@
 
 CalendarWarlock is a PowerShell-based Windows GUI application for managing Exchange Online calendar permissions. This assessment is a comprehensive vulnerability scan and penetration test covering all source files, modules, launcher scripts, and the installer. It builds upon previous assessments and identifies new findings.
 
-**Overall Risk Level:** LOW-MEDIUM
+**Overall Risk Level:** LOW
 
 ### Current Status
 
-| Severity | Previously Found | Previously Remediated | New Findings | Total Open |
-|----------|------------------|-----------------------|--------------|------------|
-| Critical | 0                | 0                     | 0            | 0          |
-| High     | 2                | 2                     | 0            | 0          |
-| Medium   | 5                | 5                     | 5            | 5          |
-| Low      | 3                | 1                     | 4            | 6          |
-| Info     | 2                | 0                     | 2            | 4          |
+| Severity | Previously Found | Previously Remediated | New Findings | Newly Remediated | Total Open |
+|----------|------------------|-----------------------|--------------|------------------|------------|
+| Critical | 0                | 0                     | 0            | 0                | 0          |
+| High     | 2                | 2                     | 0            | 0                | 0          |
+| Medium   | 5                | 5                     | 5            | 5                | 0          |
+| Low      | 3                | 1                     | 4            | 4                | 2          |
+| Info     | 2                | 0                     | 2            | 1                | 3          |
 
 ---
 
@@ -92,19 +92,12 @@ The escaping is appropriate for OData filter strings passed through the Microsof
 **Severity:** MEDIUM
 **CVSS Score:** 5.3 (CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:L)
 **Category:** Insecure Configuration
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The batch launcher uses `-ExecutionPolicy Bypass`, which completely disables PowerShell's script execution policy:
+The batch launcher previously used `-ExecutionPolicy Bypass`, which completely disabled PowerShell's script execution policy.
 
-```batch
-start "" /B powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "Start-CalendarWarlock.ps1"
-```
-
-This means any script in the application directory will execute without restriction, regardless of system-wide security policies. If an attacker can modify the script files (e.g., via a supply chain attack or local file tampering), the execution policy provides no defense.
-
-**Impact:** An attacker who gains write access to the installation directory could modify `Start-CalendarWarlock.ps1` or `CalendarWarlock.ps1` and the scripts would execute without any execution policy warnings.
-
-**Recommendation:** Use `-ExecutionPolicy RemoteSigned` or sign the scripts with a code signing certificate and rely on the system execution policy. If Bypass is required for usability, document the tradeoff and ensure the installation directory has restrictive ACLs.
+**Resolution:** Changed to `-ExecutionPolicy RemoteSigned`, which allows locally-created scripts to run while requiring remote scripts to be signed.
 
 ---
 
@@ -114,28 +107,14 @@ This means any script in the application directory will execute without restrict
 **Severity:** MEDIUM
 **CVSS Score:** 4.0 (CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H)
 **Category:** Denial of Service
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The `Grant-BulkCSVPermissions` and `Remove-BulkCSVPermissions` functions import CSV files without any size or row count validation:
+The `Grant-BulkCSVPermissions` and `Remove-BulkCSVPermissions` functions previously imported CSV files without any size or row count validation.
 
-```powershell
-$csvData = Import-Csv -Path $script:CSVFilePath  # No size limit
-```
-
-A CSV file with millions of rows could exhaust system memory, causing the application or system to become unresponsive. Additionally, a CSV with thousands of valid entries could trigger Microsoft 365 throttling, effectively causing a denial-of-service against the tenant's API quota.
-
-**Impact:** Memory exhaustion from oversized CSV files. Potential M365 API throttling from unrestricted bulk operations.
-
-**Recommendation:**
-- Add a file size check before import (e.g., reject files > 10MB)
-- Add a row count limit with user confirmation for large batches (e.g., warn if > 500 rows)
-- Example:
-```powershell
-$fileSize = (Get-Item $script:CSVFilePath).Length
-if ($fileSize -gt 10MB) {
-    # Warn user about large file
-}
-```
+**Resolution:**
+- Added file size validation (rejects files > 10 MB) before `Import-Csv` in both functions
+- Added row count warning (prompts user if > 1,000 rows) to alert about potential API throttling
 
 ---
 
@@ -145,23 +124,14 @@ if ($fileSize -gt 10MB) {
 **Severity:** MEDIUM
 **CVSS Score:** 4.3 (CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N)
 **Category:** Information Disclosure
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-While the UI correctly uses `Sanitize-ErrorMessage` to strip sensitive data before display, the `Write-Log` function receives raw, unsanitized exception messages throughout the codebase:
+The `Write-Log` function previously received raw, unsanitized exception messages.
 
-```powershell
-# UI gets sanitized message:
-Update-ResultsLog "Connection failed: $(Sanitize-ErrorMessage -ErrorMessage $_.Exception.Message)" "Error"
-
-# Log file gets raw message with sensitive data:
-Write-Log "Connection failed: $($_.Exception.Message)" "ERROR"
-```
-
-This pattern occurs at lines 513, 852-853, 906, 1063, 1272-1273, 1418, 1541, 1663, 1828-1829, 1912, 1980.
-
-**Impact:** Log files may contain file system paths, IP addresses, connection strings, server names, and other infrastructure details that an attacker with read access to logs could use for reconnaissance.
-
-**Recommendation:** Apply `Sanitize-ErrorMessage` to log entries as well, or create a separate log sanitization function that retains more detail than the UI version but still removes the most sensitive data. Alternatively, implement log file access controls.
+**Resolution:**
+- Applied `Sanitize-ErrorMessage` to all `Write-Log` error entries throughout the codebase
+- Removed file paths from informational log messages (e.g., CSV file path references)
 
 ---
 
@@ -171,31 +141,12 @@ This pattern occurs at lines 513, 852-853, 906, 1063, 1272-1273, 1418, 1541, 166
 **Severity:** MEDIUM
 **CVSS Score:** 3.7 (CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:L)
 **Category:** Input Validation
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The organization domain textbox accepts arbitrary text and passes it directly to `Connect-ExchangeOnline -Organization`:
+The organization domain textbox previously accepted arbitrary text without format validation.
 
-```powershell
-$org = $script:OrganizationTextBox.Text.Trim()
-if ([string]::IsNullOrEmpty($org)) {
-    # Only checks for empty string
-    return
-}
-Connect-Services -Organization $org  # No domain format validation
-```
-
-While `Connect-ExchangeOnline` will ultimately reject invalid domains, the lack of pre-validation means:
-- Unexpected input is sent to Microsoft's authentication endpoints
-- Error messages from failed connections may disclose environment details
-- The application shows no guidance about expected format
-
-**Recommendation:** Add domain format validation before connection:
-```powershell
-$domainPattern = '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-if ($org -notmatch $domainPattern) {
-    # Show validation error
-}
-```
+**Resolution:** Added domain format validation using regex pattern `^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` in the Connect button click handler. Invalid domains are rejected with a descriptive error message before any connection attempt.
 
 ---
 
@@ -205,18 +156,16 @@ if ($org -notmatch $domainPattern) {
 **Severity:** MEDIUM
 **CVSS Score:** 3.7 (CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N)
 **Category:** Session Management
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The application maintains authenticated sessions to Microsoft Graph and Exchange Online indefinitely. There is no idle timeout, session expiry warning, or automatic disconnection after a period of inactivity.
+The application previously maintained authenticated sessions indefinitely with no idle timeout.
 
-If a user leaves the application connected and walks away from an unlocked workstation, anyone with physical access can perform calendar permission operations using the authenticated session.
-
-**Impact:** Unauthorized calendar permission modifications via an unattended, authenticated session.
-
-**Recommendation:**
-- Implement an idle timeout (e.g., 30 minutes) that disconnects the session
-- Show a warning before automatic disconnection
-- Consider requiring re-authentication for destructive bulk operations
+**Resolution:**
+- Implemented a 30-minute idle session timeout using a Windows Forms Timer
+- The timer checks every 60 seconds if idle time has exceeded the threshold
+- User activity (button clicks, text changes, dropdown selections) resets the idle timer
+- On timeout, the session is automatically disconnected with a notification to the user
 
 ---
 
@@ -226,15 +175,12 @@ If a user leaves the application connected and walks away from an unlocked works
 **Severity:** LOW
 **CVSS Score:** 2.0
 **Category:** Code Quality / Security Hygiene
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The `Sanitize-CSVValue` function is defined but never called anywhere in the codebase. The previous assessment (MEDIUM-001) noted this function was "implemented" for CSV formula injection protection, but it is not invoked during CSV import processing or any export operation.
+The `Sanitize-CSVValue` function was defined but never called anywhere in the codebase.
 
-The comments at lines 1757 and 1924 correctly note that CSV sanitization is for output, but the application does not export any user data to CSV. The only CSV write operation is the hardcoded template download (line 2348), which doesn't use dynamic data.
-
-**Impact:** No current CSV formula injection vulnerability exists because the application doesn't export user-supplied data to CSV. However, if CSV export functionality is added in the future without calling this function, a vulnerability would be introduced.
-
-**Recommendation:** Either integrate the function into any future CSV export feature, or document its purpose clearly. Consider removing dead code if no CSV export is planned.
+**Resolution:** Removed the dead `Sanitize-CSVValue` function and associated comments referencing it. The application does not export user data to CSV, so the function was unnecessary.
 
 ---
 
@@ -244,21 +190,12 @@ The comments at lines 1757 and 1924 correctly note that CSV sanitization is for 
 **Severity:** LOW
 **CVSS Score:** 3.3 (CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N)
 **Category:** Information Disclosure
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-Log files are created using `New-Item` and `Add-Content` without explicit file permission restrictions:
+Log files were previously created with default permissions.
 
-```powershell
-New-Item -ItemType Directory -Path $script:LogPath -Force | Out-Null
-# ...
-Add-Content -Path $script:LogFile -Value $logEntry -ErrorAction SilentlyContinue
-```
-
-On Windows, the default ACLs of the installation directory (Program Files) provide some protection, but if the application is run from a user-writable directory, logs may be readable by other users on the system.
-
-**Impact:** Other local users could read log files containing email addresses and operation history.
-
-**Recommendation:** Set restrictive ACLs on the Logs directory after creation, or store logs in a user-profile-specific location (e.g., `$env:LOCALAPPDATA\CalendarWarlock\Logs`).
+**Resolution:** Added restrictive ACL configuration when creating the Logs directory. Inheritance is disabled and only the current user is granted FullControl access. Fails gracefully if ACL setting is not possible.
 
 ---
 
@@ -268,21 +205,12 @@ On Windows, the default ACLs of the installation directory (Program Files) provi
 **Severity:** LOW
 **CVSS Score:** 2.4
 **Category:** Application Logic
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The application uses `[System.Windows.Forms.Application]::DoEvents()` in the UI update functions to keep the GUI responsive during operations. While `Set-UIEnabled` disables buttons during operations, the DoEvents call processes the Windows message queue, which could potentially lead to re-entrancy if UI events are queued before controls are disabled.
+The application previously used `[System.Windows.Forms.Application]::DoEvents()` which could lead to re-entrancy issues.
 
-```powershell
-function Write-Log {
-    # ...
-    $script:StatusLabel.Text = $Message
-    [System.Windows.Forms.Application]::DoEvents()  # Processes pending UI events
-}
-```
-
-**Impact:** In rare edge cases, rapid user interaction could cause overlapping operations. The existing `Set-UIEnabled` mitigation reduces this risk significantly.
-
-**Recommendation:** Consider using `$script:MainForm.Refresh()` instead of `DoEvents()` for targeted UI updates, or implement a re-entrancy guard flag.
+**Resolution:** Replaced all three `DoEvents()` calls with targeted `$script:MainForm.Refresh()` calls in `Write-Log`, `Update-ProgressBar`, and `Update-ResultsLog` functions.
 
 ---
 
@@ -292,20 +220,12 @@ function Write-Log {
 **Severity:** LOW
 **CVSS Score:** 2.0
 **Category:** Input Validation
+**Status:** DOCUMENTED AS INTENTIONAL (2026-02-13)
 
 **Description:**
-The Job Title and Department ComboBoxes use `DropDownStyle = "DropDown"` (not `"DropDownList"`), allowing users to type arbitrary text:
+The Job Title and Department ComboBoxes use `DropDownStyle = "DropDown"` for autocomplete/type-ahead functionality. OData injection is mitigated by single-quote escaping in `AzureADOperations.psm1`.
 
-```powershell
-$script:JobTitleComboBox.DropDownStyle = "DropDown"      # Allows free text
-$script:DepartmentComboBox.DropDownStyle = "DropDown"    # Allows free text
-```
-
-This free text is then passed to OData filter queries in `Get-UsersByJobTitle` and `Get-UsersByDepartment`. While the single-quote escaping in `AzureADOperations.psm1` prevents injection, allowing arbitrary free text expands the attack surface unnecessarily.
-
-**Impact:** Minimal due to OData escaping, but increases the chance of unexpected input reaching API queries.
-
-**Recommendation:** This is by design for autocomplete functionality. The existing OData escaping is sufficient. No change required unless stricter input control is desired.
+**Resolution:** Added code comments documenting this as an intentional design choice for usability. The existing OData escaping provides sufficient protection.
 
 ---
 
@@ -313,11 +233,12 @@ This free text is then passed to OData filter queries in `Get-UsersByJobTitle` a
 
 **Severity:** INFO
 **Category:** Documentation
+**Status:** REMEDIATED (2026-02-13)
 
 **Description:**
-The previous security assessment (MEDIUM-001) stated: "This function is now used when processing CSV data in both `Grant-BulkCSVPermissions` and `Remove-BulkCSVPermissions`." This statement is inaccurate. The `Sanitize-CSVValue` function is defined but not called by any function in the codebase. The CSV processing functions explicitly note this in comments at lines 1757 and 1924.
+The previous security assessment (MEDIUM-001) inaccurately stated that `Sanitize-CSVValue` was in use.
 
-**Recommendation:** Correct the previous assessment documentation to reflect actual usage.
+**Resolution:** The `Sanitize-CSVValue` function has been removed entirely (see LOW-004). SECURITY.md documentation has been corrected to accurately reflect that CSV formula injection protection comes from email format validation, not from the removed function.
 
 ---
 
@@ -455,64 +376,71 @@ user@company.com,admin@company.com,FullAccess;Owner
 
 | Finding | Severity | Exploitability | Impact | Status |
 |---------|----------|---------------|--------|--------|
-| MEDIUM-006: ExecutionPolicy Bypass | Medium | Low (requires file system write access) | Medium | New |
-| MEDIUM-007: No CSV Size Limit | Medium | Low (requires user to open malicious CSV) | High (DoS) | New |
-| MEDIUM-008: Unsanitized Log Errors | Medium | Low (requires log file read access) | Low-Medium | New |
-| MEDIUM-009: No Domain Validation | Medium | Low (local user input) | Low | New |
-| MEDIUM-010: No Session Timeout | Medium | Medium (physical access) | Medium | New |
+| MEDIUM-006: ExecutionPolicy Bypass | Medium | Low | Medium | Remediated |
+| MEDIUM-007: No CSV Size Limit | Medium | Low | High (DoS) | Remediated |
+| MEDIUM-008: Unsanitized Log Errors | Medium | Low | Low-Medium | Remediated |
+| MEDIUM-009: No Domain Validation | Medium | Low | Low | Remediated |
+| MEDIUM-010: No Session Timeout | Medium | Medium | Medium | Remediated |
 | LOW-002: Sensitive Log Data | Low | Low | Low | Acknowledged |
 | LOW-003: No Rate Limiting | Low | Low | Low | Acknowledged |
-| LOW-004: Dead Code (Sanitize-CSVValue) | Low | N/A | N/A | New |
-| LOW-005: Default Log Permissions | Low | Low | Low | New |
-| LOW-006: DoEvents Re-entrancy | Low | Very Low | Low | New |
-| LOW-007: ComboBox Free Text | Low | Very Low (mitigated by escaping) | Very Low | New |
+| LOW-004: Dead Code (Sanitize-CSVValue) | Low | N/A | N/A | Remediated |
+| LOW-005: Default Log Permissions | Low | Low | Low | Remediated |
+| LOW-006: DoEvents Re-entrancy | Low | Very Low | Low | Remediated |
+| LOW-007: ComboBox Free Text | Low | Very Low | Very Low | Documented |
 | INFO-001: Admin Install Required | Info | N/A | N/A | Acknowledged |
 | INFO-002: No Code Signing | Info | N/A | N/A | Acknowledged |
-| INFO-003: Previous Assessment Inaccuracy | Info | N/A | N/A | New |
-| INFO-004: WiX UI Reference Correction | Info | N/A | N/A | New |
+| INFO-003: Previous Assessment Inaccuracy | Info | N/A | N/A | Remediated |
+| INFO-004: WiX UI Reference Correction | Info | N/A | N/A | Acknowledged |
 
 ---
 
 ## Recommendations Summary
 
-### Priority 1 (Should Fix)
+### All Previously Open Findings - REMEDIATED (2026-02-13)
 
-1. **MEDIUM-007:** Add CSV file size and row count limits to prevent memory exhaustion
-2. **MEDIUM-010:** Implement an idle session timeout (e.g., 30 minutes)
-3. **MEDIUM-006:** Replace `-ExecutionPolicy Bypass` with `-ExecutionPolicy RemoteSigned` and sign scripts, or document the risk and ensure installation directory ACLs are restrictive
+All Priority 1, 2, and 3 recommendations have been addressed:
 
-### Priority 2 (Consider Fixing)
+1. **MEDIUM-006:** Changed to `-ExecutionPolicy RemoteSigned`
+2. **MEDIUM-007:** Added 10MB file size limit and 1000-row warning
+3. **MEDIUM-008:** Applied `Sanitize-ErrorMessage` to all log entries
+4. **MEDIUM-009:** Added domain format validation regex
+5. **MEDIUM-010:** Implemented 30-minute idle session timeout
+6. **LOW-004:** Removed dead `Sanitize-CSVValue` code
+7. **LOW-005:** Set restrictive ACLs on Logs directory
+8. **LOW-006:** Replaced `DoEvents()` with targeted `Refresh()` calls
+9. **LOW-007:** Documented ComboBox free-text as intentional design
+10. **INFO-003:** Corrected previous assessment documentation
 
-4. **MEDIUM-008:** Apply error sanitization to log entries, or implement log file access controls
-5. **MEDIUM-009:** Add domain format validation for the organization textbox
-6. **LOW-005:** Set restrictive ACLs on the Logs directory or use a user-profile-specific log location
+### Remaining Acknowledged Items (No Action Required)
 
-### Priority 3 (Nice to Have)
-
-7. **LOW-004:** Remove `Sanitize-CSVValue` dead code or integrate it into future CSV export
-8. **LOW-006:** Replace `DoEvents()` with targeted `Refresh()` calls
-9. **INFO-002:** Consider code signing for production deployments
-10. **INFO-003:** Correct previous assessment documentation
+- **LOW-002:** Sensitive log data (by design, mitigated by ACLs)
+- **LOW-003:** No rate limiting (relies on M365 throttling)
+- **INFO-001:** Per-machine installation (appropriate for admin tool)
+- **INFO-002:** No code signing (consider for future production deployments)
 
 ---
 
 ## Conclusion
 
-CalendarWarlock maintains a solid security posture with all previously identified HIGH and MEDIUM vulnerabilities properly remediated. The new findings from this vulnerability scan are primarily operational and defensive-hardening concerns rather than exploitable vulnerabilities.
+CalendarWarlock maintains a strong security posture with all identified HIGH, MEDIUM, and actionable LOW vulnerabilities remediated. As of 2026-02-13, all findings from both the initial assessment and the 2026-02-10 vulnerability scan have been addressed.
 
-The most notable new findings are:
-- **ExecutionPolicy Bypass** (MEDIUM-006) combined with **No Code Signing** (INFO-002) means script integrity is not verified at launch
-- **No CSV size limits** (MEDIUM-007) could allow memory exhaustion via crafted files
-- **No session timeout** (MEDIUM-010) leaves authenticated sessions exposed on unattended workstations
+Key remediation highlights:
+- **ExecutionPolicy** changed from Bypass to RemoteSigned (MEDIUM-006)
+- **CSV file size and row limits** prevent memory exhaustion and API throttling (MEDIUM-007)
+- **Log sanitization** applied consistently to both UI and log files (MEDIUM-008)
+- **Domain format validation** added for organization input (MEDIUM-009)
+- **30-minute idle timeout** protects against unattended session abuse (MEDIUM-010)
+- **Dead code removed**, **DoEvents re-entrancy fixed**, **log ACLs set** (LOW-004/005/006)
 
-None of these findings are remotely exploitable. They all require either local access, physical presence, or user interaction (opening a crafted file). The application's use of Microsoft's authentication libraries, combined with consistent input validation and OData escaping, provides strong protection against the most common attack vectors.
+The application's use of Microsoft's authentication libraries, combined with consistent input validation, OData escaping, and the new defensive hardening measures, provides strong protection against common attack vectors.
 
-**Overall Risk Level:** LOW-MEDIUM
+**Overall Risk Level:** LOW
 
-The application is suitable for production deployment. The new findings should be addressed in a future release to further harden the security posture.
+The application is suitable for production deployment.
 
 ---
 
 *Initial assessment: 2026-01-19*
 *Vulnerability scan & penetration test: 2026-02-10*
+*All findings remediated: 2026-02-13*
 *Next review recommended: Upon significant code changes or in 6 months*
