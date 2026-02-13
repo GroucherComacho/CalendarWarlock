@@ -1,160 +1,312 @@
-# CalendarWarlock Security
+# CalendarWarlock — Security Overview
 
-This document provides an overview of the security measures implemented in CalendarWarlock and the security issues that were identified and resolved during development.
+This document describes the security architecture, controls, and vulnerability history of CalendarWarlock. For the full penetration test report with CVSS scores and test scenarios, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
 
-## Security Overview
-
-CalendarWarlock was designed with security as a priority. The application underwent comprehensive security testing and all identified vulnerabilities have been addressed.
-
-**Current Security Status: LOW-MEDIUM**
-
-## Key Security Features
-
-### Authentication & Credentials
-
-- **No Stored Credentials**: CalendarWarlock uses Microsoft's modern interactive authentication. Your credentials are never stored locally.
-- **Multi-Factor Authentication (MFA)**: Full compatibility with MFA - authentication is handled through Microsoft's secure OAuth 2.0 flow.
-- **Session Management**: Sessions are properly cleaned up when you close the application.
-
-### Input Protection
-
-- **Email Validation**: All email addresses are validated before processing to prevent malformed input.
-- **Permission Level Validation**: Only valid Exchange Online permission levels are accepted.
-- **OData Injection Prevention**: All inputs to Microsoft Graph queries are properly escaped.
-- **CSV Validation**: CSV file imports validate email formats and access levels per row.
-
-### Audit & Logging
-
-- **Operation Logging**: All permission changes are logged with timestamps for audit purposes.
-- **Sanitized Error Messages**: Error messages displayed in the UI are cleaned to prevent sensitive information disclosure.
-
-## Security Issues Found and Fixed
-
-During security assessments, several vulnerabilities were identified and remediated:
-
-### High Severity Issues (2 Fixed)
-
-#### OData Injection Prevention
-**Issue**: User search queries could potentially be manipulated to alter database queries.
-
-**Resolution**: All user inputs are now properly escaped before being used in Microsoft Graph API queries. Single quotes and special characters are sanitized to prevent injection attacks.
-
-**Files Fixed**:
-- `src/Modules/AzureADOperations.psm1`
+**Current Risk Level: LOW** (as of 2026-02-13)
 
 ---
 
-### Medium Severity Issues (5 Fixed)
+## Table of Contents
 
-#### CSV Formula Injection Protection
-**Issue**: Malicious CSV files could contain formulas that execute when opened in Excel.
-
-**Resolution**: Email format validation rejects formula-prefixed values as invalid emails, providing robust protection during CSV import. The application does not export user data to CSV, so no output-side sanitization is needed.
-
-**Files Fixed**:
-- `src/CalendarWarlock.ps1`
-
-#### Email Format Validation
-**Issue**: Invalid email formats could be passed to Exchange Online, potentially causing errors or unexpected behavior.
-
-**Resolution**: Added `Test-ValidEmailFormat` function with RFC-compliant regex validation. Applied consistently across all bulk operations.
-
-**Files Fixed**:
-- `src/CalendarWarlock.ps1`
-
-#### Complete Permission Level List
-**Issue**: The access level validation was missing some valid permission types.
-
-**Resolution**: Updated validation to include all 11 Exchange Online calendar permission levels: Owner, PublishingEditor, Editor, PublishingAuthor, Author, NonEditingAuthor, Reviewer, Contributor, AvailabilityOnly, LimitedDetails, and None.
-
-**Files Fixed**:
-- `src/CalendarWarlock.ps1`
-
-#### Module Path Security
-**Issue**: Relative module paths could potentially be exploited for path traversal attacks.
-
-**Resolution**: Implemented canonical path validation to ensure modules are only loaded from within the application directory. File extensions are verified and paths outside the app folder are rejected.
-
-**Files Fixed**:
-- `src/CalendarWarlock.ps1`
-
-#### Consistent Validation Across Operations
-**Issue**: Some bulk operation functions lacked email validation that was present in others.
-
-**Resolution**: Applied consistent email format validation to all bulk permission functions, ensuring uniform security across the application.
-
-**Files Fixed**:
-- `src/CalendarWarlock.ps1`
+- [Security Architecture](#security-architecture)
+- [Authentication & Session Management](#authentication--session-management)
+- [Input Validation & Injection Prevention](#input-validation--injection-prevention)
+- [Data Protection](#data-protection)
+- [Audit Logging](#audit-logging)
+- [Deployment Security](#deployment-security)
+- [Vulnerability History](#vulnerability-history)
+- [Open / Acknowledged Items](#open--acknowledged-items)
+- [Best Practices for Administrators](#best-practices-for-administrators)
+- [Reporting Security Issues](#reporting-security-issues)
 
 ---
 
-### Low Severity Issues (1 Fixed, 2 Acknowledged)
+## Security Architecture
 
-#### Error Message Sanitization (Fixed)
-**Issue**: Error messages could reveal sensitive system information like file paths or IP addresses.
+CalendarWarlock is a stateless GUI application. It stores no data locally — all user and calendar information is fetched on-demand from Microsoft 365 via OAuth 2.0-authenticated API calls.
 
-**Resolution**: Implemented `Sanitize-ErrorMessage` function that removes file paths, connection strings, and IP addresses from both UI display and log file entries.
+```
+┌──────────────────────┐
+│   CalendarWarlock     │
+│   (PowerShell GUI)    │
+│                       │
+│  No local data store  │
+│  No credential cache  │
+│  No config secrets    │
+└────────┬─────────────┘
+         │  OAuth 2.0 (HTTPS)
+         │
+    ┌────▼────────────────────────────┐
+    │       Microsoft 365             │
+    │  ┌─────────────┐ ┌───────────┐ │
+    │  │ Graph API    │ │ Exchange  │ │
+    │  │ (User data)  │ │ Online    │ │
+    │  └─────────────┘ └───────────┘ │
+    └─────────────────────────────────┘
+```
 
-#### Log File Content (Acknowledged)
-**Issue**: Log files contain email addresses and operation details.
+**Key architectural properties:**
 
-**Mitigation**: Logs are excluded from version control via `.gitignore` and stored in a dedicated `Logs/` folder with restrictive ACLs. No credentials are ever logged.
-
-#### Rate Limiting (Acknowledged)
-**Issue**: Bulk operations don't have built-in rate limiting.
-
-**Note**: This is an operational consideration. Microsoft 365 has its own throttling mechanisms. CSV operations with more than 1,000 rows now show a warning about potential API throttling.
-
----
-
-## Resolved Items from Vulnerability Scan (2026-02-10)
-
-All items identified during the 2026-02-10 vulnerability scan have been resolved:
-
-| ID | Severity | Finding | Resolution |
-|----|----------|---------|------------|
-| MEDIUM-006 | Medium | ExecutionPolicy Bypass in batch launcher | Changed to RemoteSigned |
-| MEDIUM-007 | Medium | No CSV file size/row limit | Added 10MB size limit and 1000-row warning |
-| MEDIUM-008 | Medium | Unsanitized errors in log files | Applied Sanitize-ErrorMessage to all log entries |
-| MEDIUM-009 | Medium | No organization domain validation | Added domain format regex validation |
-| MEDIUM-010 | Medium | No session timeout | Implemented 30-minute idle timeout |
-| LOW-004 | Low | Sanitize-CSVValue function unused | Removed dead code |
-| LOW-005 | Low | Default log file permissions | Set restrictive ACLs on Logs directory |
-| LOW-006 | Low | DoEvents re-entrancy risk | Replaced with targeted Refresh() calls |
-| LOW-007 | Low | ComboBox free-text input | Documented as intentional for autocomplete |
-
-For detailed technical information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
+- **No secrets on disk** — OAuth tokens are managed entirely by the Microsoft PowerShell modules; CalendarWarlock never accesses or persists them
+- **No local database** — All data comes from and goes to Microsoft 365
+- **No network listeners** — The application makes outbound connections only
+- **No background services** — Runs only when the user launches it
 
 ---
 
-## Best Practices for Users
+## Authentication & Session Management
 
-1. **Keep Modules Updated**: Regularly update the ExchangeOnlineManagement and Microsoft.Graph PowerShell modules for security patches.
+### Authentication
 
-2. **Protect Log Files**: If your environment has strict data handling requirements, manage log files according to your organization's policies.
+| Property | Detail |
+|---|---|
+| **Method** | OAuth 2.0 interactive flow via browser |
+| **MFA** | Fully supported (handled by Microsoft's auth flow) |
+| **Credential storage** | None — credentials are entered in the browser, never in the application |
+| **Token handling** | Managed by `ExchangeOnlineManagement` and `Microsoft.Graph` modules |
+| **Required roles** | Exchange Administrator or Recipient Management |
+| **Required Graph scopes** | `User.Read.All`, `Directory.Read.All` |
 
-3. **Use Least Privilege**: Select the minimum permission level needed for each use case. "Reviewer" is sufficient for read-only access.
+### Session Management
 
-4. **Verify CSV Files**: Only import CSV files from trusted sources. The application validates email formats and access levels, but it's best to verify file contents before import.
+| Control | Detail |
+|---|---|
+| **Idle timeout** | 30 minutes — timer checks every 60 seconds |
+| **Activity tracking** | Button clicks, text changes, and dropdown selections reset the idle timer |
+| **Timeout behavior** | Session disconnected automatically with user notification |
+| **Manual disconnect** | Available at any time via the Disconnect button |
+| **Form close** | Prompts for disconnect if a session is active |
+| **Connection cleanup** | Both Exchange Online and Graph sessions are terminated on disconnect |
 
-5. **Close Application When Done**: Always close CalendarWarlock when finished to ensure sessions are properly disconnected.
+---
 
-6. **Lock Your Workstation**: The application has a 30-minute idle timeout, but you should still lock your workstation when stepping away.
+## Input Validation & Injection Prevention
 
-7. **Verify Installation Integrity**: Since scripts are not digitally signed, ensure the installation directory has appropriate access controls to prevent tampering.
+### Email Validation
+
+All email inputs are validated against an RFC-compliant regex before any API call:
+
+```
+^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+```
+
+This validation is applied consistently across all operations: single-user grants/removals, bulk by job title, bulk by department, and CSV imports.
+
+### Permission Level Validation
+
+Only the 11 valid Exchange Online calendar permission levels are accepted:
+
+`Owner` | `PublishingEditor` | `Editor` | `PublishingAuthor` | `Author` | `NonEditingAuthor` | `Reviewer` | `Contributor` | `AvailabilityOnly` | `LimitedDetails` | `None`
+
+Enforced at two layers:
+1. **Application layer** — `Test-ValidAccessLevel` function validates before any operation
+2. **Module layer** — `ValidateSet` attribute on Exchange Operations functions rejects invalid values server-side
+
+### OData Injection Prevention
+
+All user-supplied values used in Microsoft Graph API filter queries are escaped by replacing single quotes (`'` to `''`). This escaping is applied at all six query points in `AzureADOperations.psm1`:
+
+- `Get-UsersByJobTitle`
+- `Get-UsersByDepartment`
+- `Get-UsersByOffice`
+- `Get-UserByEmail`
+- `Search-Users`
+
+### Organization Domain Validation
+
+The domain input is validated against:
+
+```
+^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+```
+
+Invalid domains are rejected before any connection attempt.
+
+### CSV Import Validation
+
+| Check | Detail |
+|---|---|
+| **File size** | Rejected if > 10 MB |
+| **Row count** | Warning prompt if > 1,000 rows (API throttling risk) |
+| **Email format** | Each row's MailboxEmail and UserEmail validated |
+| **Access level** | Each row's AccessLevel checked against the valid set |
+| **Formula injection** | Email validation rejects formula-prefixed values (`=`, `+`, `-`, `@`) as invalid |
+
+### Module Path Security
+
+PowerShell module imports use canonical path validation:
+
+1. `[System.IO.Path]::GetFullPath()` resolves the canonical path
+2. `.StartsWith()` confirms the path is within the application directory
+3. Only `.psm1` file extensions are accepted
+
+This prevents path traversal attacks from loading code outside the application.
+
+---
+
+## Data Protection
+
+### Data in Transit
+
+All communication with Microsoft 365 uses HTTPS via OAuth 2.0. The application does not manage TLS or certificates directly — this is handled by the Microsoft PowerShell modules.
+
+### Data at Rest
+
+CalendarWarlock stores no user data, calendar data, credentials, or tokens on disk. The only files written locally are audit logs (see below).
+
+### Error Sanitization
+
+The `Sanitize-ErrorMessage` function strips sensitive data from all error messages before they appear in the UI or log files:
+
+| Data type | Pattern removed |
+|---|---|
+| **File paths** | Windows (`C:\...`) and Unix (`/...`) style paths |
+| **Connection strings** | Strings matching connection string patterns |
+| **IP addresses** | IPv4 addresses |
+| **Server names** | Internal server hostname patterns |
+
+---
+
+## Audit Logging
+
+### Log Location and Format
+
+Logs are written to `src/Logs/CalendarWarlock_<timestamp>.log` with the format:
+
+```
+[2026-02-13 14:30:22] [INFO] CalendarWarlock started
+[2026-02-13 14:31:15] [SUCCESS] Bulk grant completed: Success=12, Failed=0, Skipped=1
+```
+
+### Log Security Controls
+
+| Control | Detail |
+|---|---|
+| **File permissions** | Logs directory has restrictive ACLs — only the current user has access |
+| **Version control** | Excluded via `.gitignore` (`*.log`, `src/Logs/`) |
+| **Content** | Operation types, timestamps, email addresses, and results |
+| **Sanitization** | Error messages are sanitized before logging (no paths, IPs, or connection strings) |
+| **Credentials** | Never logged under any circumstances |
+
+### What Is Logged
+
+- Application start/stop
+- Connection and disconnection events
+- All permission grant and removal operations (mailbox, user, permission level)
+- Operation results (success/failure/skipped counts)
+- CSV import events (sanitized — no file paths)
+- Errors (sanitized)
+
+---
+
+## Deployment Security
+
+### Execution Policy
+
+The batch launcher uses `-ExecutionPolicy RemoteSigned`, which:
+- Allows locally-created scripts to run
+- Requires downloaded/remote scripts to be digitally signed
+- Provides a balance between usability and security
+
+### Installer (MSI)
+
+- Built with WiX Toolset v3
+- Per-machine installation to `C:\Program Files\CalendarWarlock\`
+- Requires administrator privileges to install
+- Feature selection UI allows users to choose which components to install
+
+### Known Limitations
+
+- **No code signing** — Scripts and the MSI installer are not digitally signed. Administrators should verify file integrity after download and restrict write access to the installation directory.
+
+---
+
+## Vulnerability History
+
+CalendarWarlock has undergone four security assessments. All HIGH and MEDIUM findings have been remediated.
+
+### Assessment Timeline
+
+| Date | Type | Outcome |
+|---|---|---|
+| 2026-01-19 | Initial security audit | MEDIUM risk — 2 HIGH, 5 MEDIUM, 3 LOW found |
+| 2026-01-19 | Remediation & re-assessment | LOW risk — all HIGH and MEDIUM fixed |
+| 2026-02-10 | Vulnerability scan & penetration test | LOW-MEDIUM risk — 5 new MEDIUM, 4 new LOW found |
+| 2026-02-13 | Full remediation | LOW risk — all new findings resolved |
+
+### Remediated Findings
+
+#### High Severity (2 found, 2 fixed)
+
+| ID | Finding | Resolution |
+|---|---|---|
+| HIGH-001 | OData injection in `Search-Users` | Single-quote escaping applied to all Graph API filter queries |
+| HIGH-002 | OData injection in `Get-UserByEmail` | Same fix — escaping applied at all six query construction points |
+
+#### Medium Severity (10 found, 10 fixed)
+
+| ID | Finding | Resolution |
+|---|---|---|
+| MEDIUM-001 | CSV formula injection | Email validation rejects formula-prefixed values |
+| MEDIUM-002 | No email format validation | RFC-compliant regex validation added to all operations |
+| MEDIUM-003 | Incomplete access level list | All 11 Exchange permission levels now validated |
+| MEDIUM-004 | Module path traversal | Canonical path resolution + containment check + extension verification |
+| MEDIUM-005 | Inconsistent email validation | Uniform validation applied across all bulk operations |
+| MEDIUM-006 | `ExecutionPolicy Bypass` in launcher | Changed to `RemoteSigned` |
+| MEDIUM-007 | No CSV file size limit | 10 MB hard limit + 1,000-row warning added |
+| MEDIUM-008 | Unsanitized errors in log files | `Sanitize-ErrorMessage` applied to all log entries |
+| MEDIUM-009 | No domain format validation | Domain regex validation added to Connect handler |
+| MEDIUM-010 | No session timeout | 30-minute idle timeout implemented |
+
+#### Low Severity (7 found, 5 fixed, 2 acknowledged)
+
+| ID | Finding | Resolution |
+|---|---|---|
+| LOW-001 | Verbose error messages in UI | Error sanitization strips sensitive data |
+| LOW-004 | Dead `Sanitize-CSVValue` code | Removed |
+| LOW-005 | Default log file permissions | Restrictive ACLs set on Logs directory |
+| LOW-006 | `DoEvents` re-entrancy risk | Replaced with targeted `Refresh()` calls |
+| LOW-007 | ComboBox free-text input | Documented as intentional (OData escaping provides protection) |
+| LOW-002 | Log files contain email addresses | Acknowledged — required for audit trail |
+| LOW-003 | No rate limiting on bulk ops | Acknowledged — Microsoft 365 provides its own throttling |
+
+---
+
+## Open / Acknowledged Items
+
+These items have been reviewed and accepted:
+
+| ID | Severity | Item | Rationale |
+|---|---|---|---|
+| LOW-002 | Low | Log files contain email addresses | Required for audit compliance. Mitigated by restrictive ACLs and `.gitignore` exclusion. |
+| LOW-003 | Low | No application-level rate limiting | Microsoft 365 enforces its own API throttling. A >1,000-row warning alerts users. |
+| INFO-001 | Info | MSI requires admin to install | Appropriate for an administrative tool installed to Program Files. |
+| INFO-002 | Info | No code signing | Recommended for future production deployments. |
+
+---
+
+## Best Practices for Administrators
+
+1. **Keep modules updated** — Run `Update-Module ExchangeOnlineManagement` and `Update-Module Microsoft.Graph` regularly for security patches.
+
+2. **Use least privilege** — Grant the minimum permission level needed. `Reviewer` for read-only, `AvailabilityOnly` for scheduling visibility.
+
+3. **Protect the installation directory** — Since scripts are unsigned, ensure only administrators can write to the CalendarWarlock directory.
+
+4. **Manage log files** — Logs contain email addresses and operation history. Handle them according to your organization's data retention policies.
+
+5. **Verify CSV sources** — Only import CSV files from trusted sources. While the application validates content, reviewing files before import is good practice.
+
+6. **Close when finished** — The 30-minute idle timeout provides protection, but explicitly disconnecting and closing the application is better.
+
+7. **Lock your workstation** — Physical access to an active session bypasses all application-level controls.
+
+8. **Audit regularly** — Review log files periodically to verify that permission changes align with authorized requests.
+
+---
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability in CalendarWarlock, please report it through:
-- GitHub Issues: https://github.com/GroucherComacho/CalendarWarlock/issues
+If you discover a security vulnerability in CalendarWarlock, please report it through [GitHub Issues](https://github.com/GroucherComacho/CalendarWarlock/issues).
 
-## Security Assessment History
-
-| Date | Assessment Type | Result |
-|------|-----------------|--------|
-| 2026-01-19 | Initial Security Audit | MEDIUM RISK |
-| 2026-01-19 | Remediation & Re-assessment | LOW RISK |
-| 2026-02-10 | Vulnerability Scan & Penetration Test | LOW-MEDIUM RISK |
-| 2026-02-13 | Vulnerability Remediation | LOW RISK |
-
-For detailed technical security information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
+For the full technical penetration test report, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
