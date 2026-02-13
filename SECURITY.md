@@ -49,7 +49,7 @@ During security assessments, several vulnerabilities were identified and remedia
 #### CSV Formula Injection Protection
 **Issue**: Malicious CSV files could contain formulas that execute when opened in Excel.
 
-**Resolution**: Implemented `Sanitize-CSVValue` function that prefixes potentially dangerous values (starting with `=`, `+`, `-`, `@`, tab, or newline) with a single quote to prevent formula execution. Additionally, email format validation rejects formula-prefixed values as invalid emails.
+**Resolution**: Email format validation rejects formula-prefixed values as invalid emails, providing robust protection during CSV import. The application does not export user data to CSV, so no output-side sanitization is needed.
 
 **Files Fixed**:
 - `src/CalendarWarlock.ps1`
@@ -93,33 +93,35 @@ During security assessments, several vulnerabilities were identified and remedia
 #### Error Message Sanitization (Fixed)
 **Issue**: Error messages could reveal sensitive system information like file paths or IP addresses.
 
-**Resolution**: Implemented `Sanitize-ErrorMessage` function that removes file paths, connection strings, and IP addresses from error output displayed in the UI.
+**Resolution**: Implemented `Sanitize-ErrorMessage` function that removes file paths, connection strings, and IP addresses from both UI display and log file entries.
 
 #### Log File Content (Acknowledged)
 **Issue**: Log files contain email addresses and operation details.
 
-**Mitigation**: Logs are excluded from version control via `.gitignore` and stored in a dedicated `Logs/` folder. No credentials are ever logged.
+**Mitigation**: Logs are excluded from version control via `.gitignore` and stored in a dedicated `Logs/` folder with restrictive ACLs. No credentials are ever logged.
 
 #### Rate Limiting (Acknowledged)
 **Issue**: Bulk operations don't have built-in rate limiting.
 
-**Note**: This is an operational consideration. Microsoft 365 has its own throttling mechanisms. Very large bulk operations may experience throttling.
+**Note**: This is an operational consideration. Microsoft 365 has its own throttling mechanisms. CSV operations with more than 1,000 rows now show a warning about potential API throttling.
 
 ---
 
-## Open Items from Vulnerability Scan (2026-02-10)
+## Resolved Items from Vulnerability Scan (2026-02-10)
 
-The following items were identified during the most recent vulnerability scan and penetration test. They are primarily operational hardening recommendations rather than exploitable vulnerabilities:
+All items identified during the 2026-02-10 vulnerability scan have been resolved:
 
-| ID | Severity | Finding | Recommendation |
-|----|----------|---------|----------------|
-| MEDIUM-006 | Medium | ExecutionPolicy Bypass in batch launcher | Sign scripts or use RemoteSigned policy |
-| MEDIUM-007 | Medium | No CSV file size/row limit | Add size checks before import |
-| MEDIUM-008 | Medium | Unsanitized errors in log files | Apply sanitization to logs |
-| MEDIUM-009 | Medium | No organization domain validation | Add domain format regex |
-| MEDIUM-010 | Medium | No session timeout | Implement idle disconnect |
-| LOW-004 | Low | Sanitize-CSVValue function unused | Integrate or document |
-| LOW-005 | Low | Default log file permissions | Use restrictive ACLs |
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| MEDIUM-006 | Medium | ExecutionPolicy Bypass in batch launcher | Changed to RemoteSigned |
+| MEDIUM-007 | Medium | No CSV file size/row limit | Added 10MB size limit and 1000-row warning |
+| MEDIUM-008 | Medium | Unsanitized errors in log files | Applied Sanitize-ErrorMessage to all log entries |
+| MEDIUM-009 | Medium | No organization domain validation | Added domain format regex validation |
+| MEDIUM-010 | Medium | No session timeout | Implemented 30-minute idle timeout |
+| LOW-004 | Low | Sanitize-CSVValue function unused | Removed dead code |
+| LOW-005 | Low | Default log file permissions | Set restrictive ACLs on Logs directory |
+| LOW-006 | Low | DoEvents re-entrancy risk | Replaced with targeted Refresh() calls |
+| LOW-007 | Low | ComboBox free-text input | Documented as intentional for autocomplete |
 
 For detailed technical information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
 
@@ -137,7 +139,7 @@ For detailed technical information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESS
 
 5. **Close Application When Done**: Always close CalendarWarlock when finished to ensure sessions are properly disconnected.
 
-6. **Lock Your Workstation**: The application does not have an idle timeout. Lock your workstation when stepping away to prevent unauthorized session use.
+6. **Lock Your Workstation**: The application has a 30-minute idle timeout, but you should still lock your workstation when stepping away.
 
 7. **Verify Installation Integrity**: Since scripts are not digitally signed, ensure the installation directory has appropriate access controls to prevent tampering.
 
@@ -153,5 +155,6 @@ If you discover a security vulnerability in CalendarWarlock, please report it th
 | 2026-01-19 | Initial Security Audit | MEDIUM RISK |
 | 2026-01-19 | Remediation & Re-assessment | LOW RISK |
 | 2026-02-10 | Vulnerability Scan & Penetration Test | LOW-MEDIUM RISK |
+| 2026-02-13 | Vulnerability Remediation | LOW RISK |
 
 For detailed technical security information, see [SECURITY_ASSESSMENT.md](SECURITY_ASSESSMENT.md).
